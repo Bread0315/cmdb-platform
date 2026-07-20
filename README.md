@@ -46,19 +46,28 @@
 ## 📸 界面预览
 
 ### 登录页面
-![登录页面](screenshots/login.png)
+![登录页面](login.png)
+
+### 仪表盘
+![仪表盘](dashboard.png)
 
 ### 资产管理
-![资产管理](screenshots/devices.png)
+![资产管理](devices.png)
 
 ### 机房管理
-![机房管理](screenshots/rooms.png)
+![机房管理](rooms.png)
+
+### 机柜图
+![机柜图](cabinet-rack.png)
 
 ### 业务系统
-![业务系统](screenshots/systems.png)
+![业务系统](systems.png)
 
 ### IP 地址池
-![IP地址池](screenshots/ip-pools.png)
+![IP地址池](ip-pools.png)
+
+### 拓扑视图
+![拓扑视图](topology.png)
 
 ---
 
