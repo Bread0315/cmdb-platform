@@ -43,6 +43,25 @@
 
 ---
 
+## 📸 界面预览
+
+### 登录页面
+![登录页面](screenshots/login.png)
+
+### 资产管理
+![资产管理](screenshots/devices.png)
+
+### 机房管理
+![机房管理](screenshots/rooms.png)
+
+### 业务系统
+![业务系统](screenshots/systems.png)
+
+### IP 地址池
+![IP地址池](screenshots/ip-pools.png)
+
+---
+
 ## 🚀 快速开始
 
 ### 方式一：一键启动（推荐）
