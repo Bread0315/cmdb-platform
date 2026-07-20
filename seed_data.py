@@ -74,10 +74,10 @@ def seed():
 
     print("2. 创建机房...")
     rooms_data = [
-        ("陆家嘴管理机房", "上海", "浦东新区", "杨高南路759号"),
-        ("金桥核心交易机房", "上海", "浦东新区", "龙沪路399号"),
-        ("宁桥路同城机房", "上海", "浦东新区", "宁桥路801号"),
-        ("天津灾备机房", "天津", "西青区", "花苑产业园"),
+        ("望京数据中心", "北京", "朝阳区", "阜通东大街68号"),
+        ("亦庄云谷机房", "北京", "大兴区", "经海五路33号"),
+        ("南山科技园机房", "深圳", "南山区", "科技南路18号"),
+        ("张江高科机房", "上海", "浦东新区", "碧波路888号"),
     ]
     room_ids = {}
     for name, city, district, addr in rooms_data:
@@ -107,10 +107,10 @@ def seed():
 
     # 带外网段
     oob_segments = [
-        ("10.10.9.0", 24, "10.10.9.254", "VLAN901", room_ids["陆家嘴管理机房"]),
-        ("10.11.9.0", 24, "10.11.9.254", "VLAN902", room_ids["宁桥路同城机房"]),
-        ("10.12.9.0", 24, "10.12.9.254", "VLAN903", room_ids["天津灾备机房"]),
-        ("10.16.66.0", 24, "10.16.66.254", "VLAN904", room_ids["金桥核心交易机房"]),
+        ("172.16.1.0", 24, "172.16.1.254", "VLAN801", room_ids["望京数据中心"]),
+        ("172.16.2.0", 24, "172.16.2.254", "VLAN802", room_ids["亦庄云谷机房"]),
+        ("172.16.3.0", 24, "172.16.3.254", "VLAN803", room_ids["南山科技园机房"]),
+        ("172.16.4.0", 24, "172.16.4.254", "VLAN804", room_ids["张江高科机房"]),
     ]
     for network, mask, gw, vlan, rid in oob_segments:
         cur.execute("INSERT INTO ip_pool_segments(pool_id, network, mask, gateway, vlan, room_id, remark) VALUES(?,?,?,?,?,?,?)",
@@ -119,14 +119,14 @@ def seed():
 
     # 业务网段
     biz_segments = [
-        ("10.10.10.0", 24, "10.10.10.254", "VLAN101", room_ids["陆家嘴管理机房"]),
-        ("10.168.10.0", 24, "10.168.10.254", "VLAN102", room_ids["陆家嘴管理机房"]),
-        ("10.11.11.0", 24, "10.11.11.254", "VLAN111", room_ids["宁桥路同城机房"]),
-        ("10.169.10.0", 24, "10.169.10.254", "VLAN112", room_ids["宁桥路同城机房"]),
-        ("10.12.10.0", 24, "10.12.10.254", "VLAN121", room_ids["天津灾备机房"]),
-        ("10.170.10.0", 24, "10.170.10.254", "VLAN122", room_ids["天津灾备机房"]),
-        ("10.16.70.0", 24, "10.16.70.254", "VLAN131", room_ids["金桥核心交易机房"]),
-        ("10.16.110.0", 24, "10.16.110.254", "VLAN132", room_ids["金桥核心交易机房"]),
+        ("192.168.10.0", 24, "192.168.10.254", "VLAN10", room_ids["望京数据中心"]),
+        ("192.168.20.0", 24, "192.168.20.254", "VLAN20", room_ids["望京数据中心"]),
+        ("192.168.30.0", 24, "192.168.30.254", "VLAN30", room_ids["亦庄云谷机房"]),
+        ("192.168.40.0", 24, "192.168.40.254", "VLAN40", room_ids["亦庄云谷机房"]),
+        ("192.168.50.0", 24, "192.168.50.254", "VLAN50", room_ids["南山科技园机房"]),
+        ("192.168.60.0", 24, "192.168.60.254", "VLAN60", room_ids["南山科技园机房"]),
+        ("192.168.70.0", 24, "192.168.70.254", "VLAN70", room_ids["张江高科机房"]),
+        ("192.168.80.0", 24, "192.168.80.254", "VLAN80", room_ids["张江高科机房"]),
     ]
     for network, mask, gw, vlan, rid in biz_segments:
         cur.execute("INSERT INTO ip_pool_segments(pool_id, network, mask, gateway, vlan, room_id, remark) VALUES(?,?,?,?,?,?,?)",
@@ -146,18 +146,18 @@ def seed():
     for room_name, rid in room_ids.items():
         cabs = cabinet_ids[room_name]
         # 根据机房确定业务网段前缀
-        if room_name == "陆家嘴管理机房":
-            biz_prefix = "10.10.10"
-            oob_prefix = "10.10.9"
-        elif room_name == "金桥核心交易机房":
-            biz_prefix = "10.16.70"
-            oob_prefix = "10.16.66"
-        elif room_name == "宁桥路同城机房":
-            biz_prefix = "10.11.11"
-            oob_prefix = "10.11.9"
-        else:  # 天津灾备机房
-            biz_prefix = "10.12.10"
-            oob_prefix = "10.12.9"
+        if room_name == "望京数据中心":
+            biz_prefix = "192.168.10"
+            oob_prefix = "172.16.1"
+        elif room_name == "亦庄云谷机房":
+            biz_prefix = "192.168.30"
+            oob_prefix = "172.16.2"
+        elif room_name == "南山科技园机房":
+            biz_prefix = "192.168.50"
+            oob_prefix = "172.16.3"
+        else:  # 张江高科机房
+            biz_prefix = "192.168.70"
+            oob_prefix = "172.16.4"
 
         # 服务器 50 台（每机柜5台，2U高度，从U42向下排列）
         for i in range(1, 51):
@@ -257,8 +257,7 @@ def seed():
         ip_map = {row[1]: row[0] for row in ips}
 
         # 获取该机房的设备
-        if network.startswith("10.10.9") or network.startswith("10.11.9") or \
-           network.startswith("10.12.9") or network.startswith("10.16.66"):
+        if network.startswith("172.16."):
             # 带外网段，匹配 oob_ip
             devices = db.execute("SELECT id, oob_ip FROM devices WHERE room_id=? AND oob_ip != '-'", (room_id,)).fetchall()
         else:
@@ -398,13 +397,13 @@ def seed():
     for name, dept, owner, desc, domain, tech in systems_data:
         # 根据系统名称分配到机房
         if "灾备" in name:
-            rid = room_ids["天津灾备机房"]
+            rid = room_ids["南山科技园机房"]
         elif "交易" in name or "核心" in name:
-            rid = room_ids["金桥核心交易机房"]
-        elif "同城" in name:
-            rid = room_ids["宁桥路同城机房"]
+            rid = room_ids["望京数据中心"]
+        elif "安全" in name:
+            rid = room_ids["张江高科机房"]
         else:
-            rid = room_ids["陆家嘴管理机房"]
+            rid = room_ids["亦庄云谷机房"]
 
         cur.execute("""INSERT INTO business_systems(name, sys_type, status, department, owner,
             developer, description, biz_domain, tech_stack, db_info, middleware,
@@ -437,7 +436,7 @@ def seed():
         ("INFO", "认证", "用户登录", "admin 登录成功"),
         ("INFO", "资产管理", "新增设备", "批量导入设备"),
         ("INFO", "IP管理", "新增地址池", "创建业务地址池"),
-        ("INFO", "机房管理", "新增机房", "新增陆家嘴管理机房"),
+        ("INFO", "机房管理", "新增机房", "新增望京数据中心"),
         ("INFO", "业务系统", "新增系统", "新增核心交易系统"),
     ]
     for level, module, action, detail in system_logs:
