@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}资产管理{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📦 资产管理</h1>
+    <div class="btn-group">
+        {% if current_user.role != 'viewer' %}
+        <button id="batchDelete" class="btn btn-danger btn-sm">🗑 批量删除</button>
+        <button id="batchEdit" class="btn btn-outline btn-sm">✏️ 批量编辑</button>
+        <a href="{{ url_for('api.api_devices_import') }}" class="btn btn-sm btn-outline">📥 批量导入</a>
+        <a href="/api/devices/template" class="btn btn-sm btn-outline">📄 导入模板</a>
+        <a href="{{ url_for('devices.device_add') }}" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x1="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            新增资产
+        </a>
+        {% endif %}
+        <a href="/api/devices/export" class="btn btn-sm btn-outline">📤 导出CSV</a>
+    </div>
+</div>
+
+<!-- 分类标签 -->
+<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+    <a href="{{ url_for('devices.device_list') }}" class="btn {{ 'btn-primary' if not cat_filter else 'btn-outline' }}">全部</a>
+    <a href="{{ url_for('devices.device_list', cat='hardware') }}" class="btn {{ 'btn-primary' if cat_filter == 'hardware' else 'btn-outline' }}">🖥 硬件资产</a>
+    <a href="{{ url_for('devices.device_list', cat='network') }}" class="btn {{ 'btn-primary' if cat_filter == 'network' else 'btn-outline' }}">🌐 网络设备</a>
+    <a href="{{ url_for('devices.device_list', cat='infrastructure') }}" class="btn {{ 'btn-primary' if cat_filter == 'infrastructure' else 'btn-outline' }}">🏗 机房基础设施</a>
+    <a href="{{ url_for('devices.device_list', cat='software') }}" class="btn {{ 'btn-primary' if cat_filter == 'software' else 'btn-outline' }}">💿 软件资产</a>
+    <a href="{{ url_for('devices.device_list', cat='office') }}" class="btn {{ 'btn-primary' if cat_filter == 'office' else 'btn-outline' }}">🖨 办公类资产</a>
+    <a href="{{ url_for('devices.device_list', cat='other') }}" class="btn {{ 'btn-primary' if cat_filter == 'other' else 'btn-outline' }}">🔧 其他配件</a>
+</div>
+
+<!-- 搜索/筛选 -->
+<div class="card">
+    <div class="card-body">
+        <form method="GET" class="search-bar">
+            {% if cat_filter %}<input type="hidden" name="cat" value="{{ cat_filter }}">{% endif %}
+            <div class="form-group">
+                <label>关键词</label>
+                <input type="text" name="q" class="form-control" placeholder="名称/SN码/IP/品牌/机房" value="{{ keyword }}">
+            </div>
+            <div class="form-group">
+                <label>资产类型</label>
+                <select name="type" class="form-control">
+                    <option value="">全部类型</option>
+                    {% for t in types %}
+                    <option value="{{ t.id }}" {{ 'selected' if type_id|string == t.id|string }}>{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>生命周期</label>
+                <select name="state" class="form-control">
+                    <option value="">全部状态</option>
+                    {% for s in states %}
+                    <option value="{{ s.id }}" {{ 'selected' if state_id|string == s.id|string }}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>机房</label>
+                <select name="room" class="form-control">
+                    <option value="">全部机房</option>
+                    {% for r in rooms %}
+                    <option value="{{ r.id }}" {{ 'selected' if room_filter|string == r.id|string }}>{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="align-self:flex-end;">
+                <button type="submit" class="btn btn-primary">搜索</button>
+                <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 资产列表 -->
+<div class="card">
+    <div class="card-header">
+        资产列表
+        <span class="text-muted" style="font-weight:400;font-size:13px;">共 {{ total }} 条</span>
+    </div>
+    <div class="card-body">
+        {% if devices %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>名称</th>
+                        <th>分类</th>
+                        <th>类型</th>
+                        <th>品牌/型号</th>
+                        <th>机房</th>
+                        <th>负责人</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in devices %}
+                    <tr>
+                        <td><input type="checkbox" class="device-check" value="{{ d.id }}"></td>
+                        <td><a href="{{ url_for('devices.device_detail', did=d.id) }}" style="font-weight:600;">{{ d.name }}</a></td>
+                        <td>
+                            {% if d.category == 'hardware' %}<span class="badge badge-primary">硬件</span>
+                            {% elif d.category == 'network' %}<span class="badge badge-success">网络</span>
+                            {% elif d.category == 'software' %}<span class="badge badge-info">软件</span>
+                            {% elif d.category == 'infrastructure' %}<span class="badge badge-warning">基础设施</span>
+                            {% elif d.category == 'office' %}<span class="badge badge-warning">办公</span>
+                            {% else %}<span class="badge badge-secondary">配件</span>{% endif %}
+                        </td>
+                        <td><span class="badge badge-secondary">{{ d.type_name }}</span></td>
+                        <td>{{ d.brand }} {{ d.model }}</td>
+                        <td>{{ d.room_name or '-' }}</td>
+                        <td>{{ d.custodian or '-' }}</td>
+                        <td>
+                            {% set sort = d.state_sort %}
+                            {% if sort <= 4 %}<span class="badge badge-info">{{ d.state_name }}</span>
+                            {% elif sort <= 6 %}<span class="badge badge-success">{{ d.state_name }}</span>
+                            {% elif sort <= 8 %}<span class="badge badge-warning">{{ d.state_name }}</span>
+                            {% else %}<span class="badge badge-danger">{{ d.state_name }}</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                {% if current_user.role != 'viewer' %}
+                                <a href="{{ url_for('devices.device_edit', did=d.id) }}" class="btn btn-sm btn-outline">编辑</a>
+                                <form method="POST" action="{{ url_for('devices.device_delete', did=d.id) }}" style="display:inline;" onsubmit="return confirm('确定删除？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                </form>
+                                {% else %}
+                                <a href="{{ url_for('devices.device_detail', did=d.id) }}" class="btn btn-sm btn-outline">查看</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="?page={{ page-1 }}&q={{ keyword }}&type={{ type_id }}&state={{ state_id }}&cat={{ cat_filter }}&room={{ room_filter }}">←</a>
+            {% endif %}
+            {% for p in range(1, total_pages+1) %}
+                {% if p == page %}
+                <span class="active">{{ p }}</span>
+                {% elif p <= 3 or p > total_pages - 3 or (p >= page-1 and p <= page+1) %}
+                <a href="?page={{ p }}&q={{ keyword }}&type={{ type_id }}&state={{ state_id }}&cat={{ cat_filter }}&room={{ room_filter }}">{{ p }}</a>
+                {% elif p == 4 or p == total_pages - 3 %}
+                <span>…</span>
+                {% endif %}
+            {% endfor %}
+            {% if page < total_pages %}
+            <a href="?page={{ page+1 }}&q={{ keyword }}&type={{ type_id }}&state={{ state_id }}&cat={{ cat_filter }}&room={{ room_filter }}">→</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <p>暂无匹配的资产</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 批量编辑弹窗 -->
+<div id="batchEditModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:12px; padding:24px; width:520px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,.2); max-height:80vh; overflow:auto;">
+        <h3 style="margin:0 0 16px; font-size:16px;">批量编辑资产</h3>
+        <form method="POST" action="{{ url_for('devices.device_batch_edit') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="ids" id="batch-edit-ids">
+            <div style="margin-bottom:12px; padding:8px; background:var(--bg); border-radius:6px; font-size:12px;">
+                已选择 <b id="batch-edit-count">0</b> 台设备
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div>
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">生命周期状态</label>
+                    <select name="lifecycle_state_id" class="form-control">
+                        <option value="">不修改</option>
+                        {% for s in states %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">所属机房</label>
+                    <select name="room_id" class="form-control">
+                        <option value="">不修改</option>
+                        {% for r in rooms %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">负责人</label>
+                    <input type="text" name="custodian" class="form-control" placeholder="不修改则留空">
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">部门</label>
+                    <input type="text" name="department" class="form-control" placeholder="不修改则留空">
+                </div>
+                <div style="grid-column:1/3;">
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">标签（追加，逗号分隔）</label>
+                    <input type="text" name="tag" class="form-control" placeholder="如：核心,生产">
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn btn-outline" onclick="hideBatchEdit()">取消</button>
+                <button type="submit" class="btn btn-primary">确认修改</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('selectAll')?.addEventListener('change', function() {
+    document.querySelectorAll('.device-check').forEach(function(cb) { cb.checked = document.getElementById('selectAll').checked; });
+});
+
+document.getElementById('batchDelete')?.addEventListener('click', function() {
+    var ids = [];
+    document.querySelectorAll('.device-check:checked').forEach(function(cb) { ids.push(cb.value); });
+    if (ids.length === 0) { alert('请先选择设备'); return; }
+    if (!confirm('确定删除选中的 ' + ids.length + ' 台设备？')) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("devices.device_batch_delete") }}';
+    form.innerHTML = '<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="ids" value="' + ids.join(',') + '">';
+    document.body.appendChild(form);
+    form.submit();
+});
+
+document.getElementById('batchEdit')?.addEventListener('click', function() {
+    var ids = [];
+    document.querySelectorAll('.device-check:checked').forEach(function(cb) { ids.push(cb.value); });
+    if (ids.length === 0) { alert('请先选择设备'); return; }
+    document.getElementById('batch-edit-ids').value = ids.join(',');
+    document.getElementById('batch-edit-count').textContent = ids.length;
+    document.getElementById('batchEditModal').style.display = 'flex';
+});
+
+function hideBatchEdit() { document.getElementById('batchEditModal').style.display = 'none'; }
+</script>
+{% endblock %}

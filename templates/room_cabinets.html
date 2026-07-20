@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}{{ room.name }} - 机柜列表{% endblock %}
+{% block content %}
+
+<!-- 页面头部 -->
+<div class="rm-header">
+    <div class="rm-header-left">
+        <a href="{{ url_for('rooms.room_list') }}" class="rm-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <div>
+            <h1>{{ room.name }}</h1>
+            <span class="rm-subtitle">机柜管理</span>
+        </div>
+    </div>
+    {% if current_user.role != 'viewer' %}
+    <a href="{{ url_for('rooms.room_cabinet_add', rid=room.id) }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增机柜
+    </a>
+    {% endif %}
+</div>
+
+<!-- 机房信息卡片 -->
+<div class="rm-room-info">
+    <div class="rm-info-tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        {{ room.name }}
+    </div>
+    <div class="rm-info-detail">
+        <span>楼栋：<strong>{{ room.building or '-' }}</strong></span>
+        <span class="rm-info-dot"></span>
+        <span>楼层：<strong>{{ room.floor or '-' }}</strong></span>
+        <span class="rm-info-dot"></span>
+        <span>区域：<strong>{{ room.area or '-' }}</strong></span>
+        <span class="rm-info-dot"></span>
+        <span>机柜数：<strong>{{ cabinets|length }}</strong></span>
+    </div>
+</div>
+
+{% if cabinets %}
+<div class="cab-grid">
+    {% for c in cabinets %}
+    <div class="cab-card">
+        <!-- 顶部渐变条 -->
+        {% set used_pct = (c.device_count / c.u_total * 100) | round(1) if c.u_total > 0 else 0 %}
+        <div class="cab-card-top" style="background: linear-gradient(90deg, {{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }}, {{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }}88);"></div>
+
+        <!-- 头部 -->
+        <div class="cab-card-header">
+            <div class="cab-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            </div>
+            <div class="cab-card-title">
+                <h3>{{ c.name }}</h3>
+                <span class="cab-card-sub">{{ c.power or '供电未配置' }}</span>
+            </div>
+            {% if current_user.role != 'viewer' %}
+            <div class="cab-card-actions">
+                <a href="{{ url_for('rooms.cabinet_edit', cid=c.id) }}" class="rm-action" title="编辑">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </a>
+                {% if c.device_count == 0 %}
+                <form method="POST" action="{{ url_for('rooms.cabinet_delete', cid=c.id) }}" style="display:inline;" onsubmit="return confirm('确定删除此机柜？')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="rm-action rm-action-danger" title="删除">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 使用率 -->
+        <div class="cab-usage">
+            <div class="cab-usage-header">
+                <span>U 位使用率</span>
+                <span class="cab-usage-num">{{ used_pct }}%</span>
+            </div>
+            <div class="cab-usage-bar">
+                <div class="cab-usage-fill" style="width:{{ used_pct }}%; background:{{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }};"></div>
+            </div>
+            <div class="cab-usage-detail">
+                <span>{{ c.device_count }} 台设备</span>
+                <span>{{ c.u_total }}U 总容量</span>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="cab-card-footer">
+            <a href="{{ url_for('rooms.cabinet_rack', cid=c.id) }}" class="cab-btn cab-btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                机柜详情
+            </a>
+            <a href="{{ url_for('rooms.cabinet_edit', cid=c.id) }}" class="cab-btn">编辑</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+        </div>
+        <h3>暂无机柜</h3>
+        <p>为这个机房添加第一个机柜</p>
+        {% if current_user.role != 'viewer' %}
+        <a href="{{ url_for('rooms.room_cabinet_add', rid=room.id) }}" class="btn btn-primary mt-4">添加机柜</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+.rm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.rm-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.rm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.rm-back {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.rm-back:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.rm-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.rm-room-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.rm-info-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: rgba(91,94,166,.1);
+    color: var(--primary);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.rm-info-detail {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+.rm-info-detail strong {
+    color: var(--text);
+}
+.rm-info-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--border);
+}
+
+/* 机柜网格 */
+.cab-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.cab-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: var(--transition);
+}
+.cab-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+.cab-card-top {
+    height: 3px;
+}
+
+.cab-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 18px 0;
+}
+.cab-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(91,94,166,.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cab-card-icon svg {
+    width: 20px;
+    height: 20px;
+    color: var(--primary);
+}
+.cab-card-title {
+    flex: 1;
+    min-width: 0;
+}
+.cab-card-title h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+}
+.cab-card-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.cab-card-actions {
+    display: flex;
+    gap: 4px;
+}
+.rm-action {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.rm-action:hover {
+    background: var(--bg);
+    color: var(--primary);
+}
+.rm-action-danger:hover {
+    background: rgba(224,93,111,.1);
+    color: var(--danger);
+}
+
+/* 使用率 */
+.cab-usage {
+    padding: 16px 18px;
+}
+.cab-usage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.cab-usage-num {
+    font-weight: 700;
+    color: var(--text);
+}
+.cab-usage-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.cab-usage-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .6s ease;
+}
+.cab-usage-detail {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.cab-card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 0 18px 18px;
+}
+.cab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.cab-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.cab-btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.cab-btn-primary:hover {
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+}
+.empty-icon {
+    margin-bottom: 20px;
+    color: var(--text-muted);
+    opacity: .3;
+}
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.empty-state p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+    .cab-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

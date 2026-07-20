@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+{% block title %}{{ cabinet.name }} - 机柜图{% endblock %}
+{% block content %}
+
+<!-- 页面头部 -->
+<div class="cr-header">
+    <div class="cr-header-left">
+        <a href="{{ url_for('rooms.room_cabinets', rid=cabinet.room_id) }}" class="cr-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <div class="cr-header-info">
+            <h1>{{ cabinet.name }}</h1>
+            <div class="cr-header-meta">
+                <span class="cr-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    {{ cabinet.room_name or '未分配' }}
+                </span>
+                <span class="cr-meta-dot"></span>
+                <span class="cr-meta-item">{{ cabinet.u_total }}U</span>
+                <span class="cr-meta-dot"></span>
+                <span class="cr-meta-item">{{ cabinet.power or '供电未配置' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 主布局 -->
+<div class="cr-layout">
+    <!-- 左侧：机柜 -->
+    <div class="cr-rack-section">
+        <!-- 图例 -->
+        <div class="cr-legend">
+            <span class="cr-legend-item"><span class="cr-legend-color" style="background:var(--primary);"></span>运行中</span>
+            <span class="cr-legend-item"><span class="cr-legend-color" style="background:var(--bg);border:1px solid var(--border);"></span>空闲</span>
+        </div>
+
+        <!-- 机柜主体 -->
+        <div class="cr-rack">
+            <!-- 机柜顶盖 -->
+            <div class="cr-rack-top">
+                <div class="cr-rack-brand">
+                    <div class="cr-led"></div>
+                    <span>{{ cabinet.name }}</span>
+                    <div class="cr-led"></div>
+                </div>
+                <div class="cr-rack-specs">
+                    <span>{{ cabinet.u_total }}U</span>
+                    <span class="cr-specs-sep">·</span>
+                    <span>{{ cabinet.power or '-' }}</span>
+                </div>
+            </div>
+
+            <!-- U位区域 -->
+            <div class="cr-rack-body">
+                {% for u in range(cabinet.u_total, 0, -1) %}
+                {% set dev = u_map.get(u, none) %}
+                {% if dev %}
+                    {% set end_u = end_positions.get(dev.id, u) %}
+                    {% if end_u == u %}
+                        <div class="cr-slot cr-device" style="height:{{ 20 * (dev.u_height or 1) }}px;">
+                            <div class="cr-slot-marker">
+                                <span class="cr-slot-num">
+                                    {% set s_u = start_positions.get(dev.id, u) %}
+                                    U{{ s_u }}{% if dev.u_height > 1 %}–{{ u }}{% endif %}
+                                </span>
+                                <div class="cr-slot-led"></div>
+                            </div>
+                            <a href="{{ url_for('devices.device_detail', did=dev.id) }}" class="cr-device-link" title="{{ dev.name }} | {{ dev.state_name }} | {{ dev.biz_ip or '-' }} | {{ dev.oob_ip or '-' }}">
+                                <div class="cr-device-main">
+                                    <span class="cr-device-name">{{ dev.name }}</span>
+                                </div>
+                                <div class="cr-device-side">
+                                    {% if dev.biz_ip %}
+                                    <span class="cr-device-ip"><span class="cr-ip-label">业务</span>{{ dev.biz_ip }}</span>
+                                    {% endif %}
+                                    {% if dev.oob_ip %}
+                                    <span class="cr-device-ip cr-device-ip-oob"><span class="cr-ip-label">带外</span>{{ dev.oob_ip }}</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="cr-slot cr-empty">
+                        <div class="cr-slot-marker">
+                            <span class="cr-slot-num">U{{ u }}</span>
+                        </div>
+                        <div class="cr-slot-content">
+                            <span class="cr-slot-hint">空闲</span>
+                        </div>
+                    </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- 机柜底座 -->
+            <div class="cr-rack-bottom">
+                <span>▼ 底部</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：设备清单 -->
+    <div class="cr-panel-section">
+        <div class="cr-panel">
+            <div class="cr-panel-header">
+                <h3>设备清单</h3>
+                <span class="cr-panel-count">{{ devices|length }} 台</span>
+            </div>
+            
+            {% if devices %}
+            <div class="cr-panel-list">
+                {% for d in devices %}
+                <a href="{{ url_for('devices.device_detail', did=d.id) }}" class="cr-panel-item">
+                    <div class="cr-panel-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="22" x2="18" y2="22"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+                    </div>
+                    <div class="cr-panel-info">
+                        <div class="cr-panel-name">{{ d.name }}</div>
+                        <div class="cr-panel-meta">
+                            {{ d.state_name }}
+                            {% if d.biz_ip %} · 业务: {{ d.biz_ip }}{% endif %}
+                            {% if d.oob_ip %} · 带外: {{ d.oob_ip }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="cr-panel-pos">{{ d.u_position }}</div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="cr-panel-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="22" x2="18" y2="22"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+                <p>暂无设备</p>
+                <span>该机柜当前为空</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* ===== 头部 ===== */
+.cr-header {
+    margin-bottom: 16px;
+}
+.cr-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cr-back {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.cr-back:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.cr-back svg { width: 16px; height: 16px; }
+.cr-header-info h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0 0 4px;
+}
+.cr-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.cr-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.cr-meta-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--border);
+}
+
+/* ===== 主布局 ===== */
+.cr-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    align-items: start;
+}
+
+/* ===== 机柜区域 ===== */
+.cr-rack-section {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+}
+
+/* 图例 */
+.cr-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.cr-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.cr-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--primary);
+}
+
+/* 机柜 */
+.cr-rack {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-light);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+/* 机柜顶盖 */
+.cr-rack-top {
+    padding: 10px 16px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+}
+.cr-rack-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+.cr-rack-brand span {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: 2px;
+}
+.cr-led {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 10px #4ade80;
+    animation: crLedPulse 2s ease-in-out infinite;
+}
+@keyframes crLedPulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px #4ade80; }
+    50% { opacity: .6; box-shadow: 0 0 5px #4ade80; }
+}
+.cr-rack-specs {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.cr-specs-sep { margin: 0 6px; }
+
+/* 机柜主体 */
+.cr-rack-body {
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+/* U位槽 */
+.cr-slot {
+    display: flex;
+    align-items: stretch;
+    height: 20px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+/* U位标记 */
+.cr-slot-marker {
+    width: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.cr-slot-num {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: 'SF Mono', Consolas, monospace;
+}
+.cr-slot-led {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 4px #4ade80;
+    margin-top: 1px;
+}
+
+/* 槽内容 */
+.cr-slot-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+}
+
+/* 空闲槽 */
+.cr-empty {
+    background: var(--bg);
+    border: 1px solid var(--border);
+}
+.cr-empty .cr-slot-content {
+    justify-content: center;
+}
+.cr-slot-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* 设备槽 */
+.cr-device {
+    background: linear-gradient(90deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 80%, black) 100%);
+    position: relative;
+}
+.cr-device::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 50%, rgba(0,0,0,.1) 100%);
+    pointer-events: none;
+}
+
+/* 设备链接 */
+.cr-device-link {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    text-decoration: none;
+    position: relative;
+    z-index: 1;
+    transition: all .15s;
+}
+.cr-device-link:hover {
+    background: rgba(255,255,255,.08);
+}
+
+/* 设备主信息 */
+.cr-device-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+.cr-device-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cr-device-type {
+    font-size: 10px;
+    color: rgba(255,255,255,.7);
+}
+
+/* 设备侧信息 */
+.cr-device-side {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+.cr-device-ip {
+    padding: 1px 5px;
+    background: rgba(0,0,0,.25);
+    border-radius: 3px;
+    font-size: 9px;
+    color: rgba(255,255,255,.8);
+    font-family: 'SF Mono', Consolas, monospace;
+}
+.cr-device-ip-oob {
+    background: rgba(255,255,255,.15);
+    color: rgba(255,255,255,.9);
+}
+.cr-ip-label {
+    font-size: 8px;
+    color: rgba(255,255,255,.5);
+    margin-right: 2px;
+}
+
+/* 机柜底座 */
+.cr-rack-bottom {
+    padding: 10px;
+    text-align: center;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+}
+.cr-rack-bottom span {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ===== 右侧面板 ===== */
+.cr-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: sticky;
+    top: 24px;
+}
+.cr-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.cr-panel-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.cr-panel-count {
+    padding: 3px 10px;
+    background: rgba(91,94,166,.1);
+    color: var(--primary);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* 设备列表 */
+.cr-panel-list {
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 12px;
+}
+.cr-panel-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+.cr-panel-item:hover {
+    border-color: var(--card-border-hover);
+    background: var(--card-bg-hover);
+    transform: translateX(4px);
+}
+.cr-panel-item:last-child { margin-bottom: 0; }
+
+.cr-panel-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(91,94,166,.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--primary);
+}
+
+.cr-panel-info {
+    flex: 1;
+    min-width: 0;
+}
+.cr-panel-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+.cr-panel-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.cr-panel-pos {
+    padding: 4px 10px;
+    background: rgba(91,94,166,.1);
+    color: var(--primary);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'SF Mono', Consolas, monospace;
+    flex-shrink: 0;
+}
+
+/* 空状态 */
+.cr-panel-empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.cr-panel-empty svg {
+    margin-bottom: 16px;
+    opacity: .3;
+}
+.cr-panel-empty p {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.cr-panel-empty span {
+    font-size: 12px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 1000px) {
+    .cr-layout { grid-template-columns: 1fr; }
+    .cr-panel { position: static; }
+    .cr-rack-section { max-height: none; }
+    .cr-rack-body { max-height: calc(100vh - 250px); }
+}
+@media (max-width: 768px) {
+    .cr-header-info h1 { font-size: 20px; }
+    .cr-header-meta { flex-wrap: wrap; gap: 6px; }
+    .cr-rack { max-width: 100%; }
+    .cr-rack-body { max-height: calc(100vh - 280px); }
+    .cr-device-name { font-size: 10px; }
+    .cr-device-ip { font-size: 8px; padding: 1px 4px; }
+    .cr-slot-num { font-size: 8px; }
+    .cr-slot-marker { width: 30px; }
+}
+@media (max-width: 600px) {
+    .cr-header-info h1 { font-size: 18px; }
+    .cr-rack-body { max-height: calc(100vh - 300px); }
+    .cr-device-side { display: none; }
+    .cr-slot-marker { width: 26px; }
+}
+</style>
+
+<script>
+// 动态调整机柜高度
+function adjustRackHeight() {
+    var rackBody = document.querySelector('.cr-rack-body');
+    if (rackBody) {
+        var header = document.querySelector('.cr-header');
+        var legend = document.querySelector('.cr-legend');
+        var rackTop = document.querySelector('.cr-rack-top');
+        var rackBottom = document.querySelector('.cr-rack-bottom');
+        var panel = document.querySelector('.cr-panel');
+
+        var usedHeight = 0;
+        if (header) usedHeight += header.offsetHeight + 16;
+        if (legend) usedHeight += legend.offsetHeight + 12;
+        if (rackTop) usedHeight += rackTop.offsetHeight;
+        if (rackBottom) usedHeight += rackBottom.offsetHeight;
+
+        var availableHeight = window.innerHeight - usedHeight - 100;
+        rackBody.style.maxHeight = Math.max(300, availableHeight) + 'px';
+    }
+}
+
+window.addEventListener('load', adjustRackHeight);
+window.addEventListener('resize', adjustRackHeight);
+</script>
+{% endblock %}

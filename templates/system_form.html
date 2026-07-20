@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑系统' if system else '新增系统' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ '✏️ 编辑业务系统' if system else '➕ 新增业务系统' }}</h1>
+    <a href="{{ url_for('systems.system_list') }}" class="btn btn-outline">← 返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h3 style="margin-bottom:16px; font-size:16px;">基本信息</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">系统名称</label>
+                    <input type="text" name="name" class="form-control" value="{{ system.name if system else '' }}" required placeholder="如：核心交易系统">
+                </div>
+                <div class="form-group">
+                    <label>系统类型</label>
+                    <select name="sys_type" class="form-control">
+                        <option value="">请选择</option>
+                        {% for t in ['核心业务系统','支撑系统','管理系统','数据平台','基础设施','第三方对接','内部工具'] %}
+                        <option value="{{ t }}" {{ 'selected' if system and system.sys_type == t }}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>运行状态</label>
+                    <select name="status" class="form-control">
+                        {% for val, label in [('running','运行中'),('testing','测试中'),('maintenance','维护中'),('stopped','已停止'),('planned','规划中')] %}
+                        <option value="{{ val }}" {{ 'selected' if system and system.status == val else 'selected' if not system and val == 'running' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>所属部门</label>
+                    <input type="text" name="department" class="form-control" value="{{ system.department if system else '' }}" placeholder="如：技术部">
+                </div>
+                <div class="form-group">
+                    <label>业务负责人</label>
+                    <input type="text" name="owner" class="form-control" value="{{ system.owner if system else '' }}" placeholder="如：张三">
+                </div>
+                <div class="form-group">
+                    <label>开发负责人</label>
+                    <input type="text" name="developer" class="form-control" value="{{ system.developer if system else '' }}" placeholder="如：李四">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>系统描述</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="系统功能简介...">{{ system.description if system else '' }}</textarea>
+            </div>
+
+            <h3 style="margin:20px 0 16px; font-size:16px;">技术信息</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>业务域名</label>
+                    <input type="text" name="biz_domain" class="form-control" value="{{ system.biz_domain if system else '' }}" placeholder="如：trade.example.com">
+                </div>
+                <div class="form-group">
+                    <label>技术栈</label>
+                    <input type="text" name="tech_stack" class="form-control" value="{{ system.tech_stack if system else '' }}" placeholder="如：Java + Spring Boot + Vue">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>数据库</label>
+                    <input type="text" name="db_info" class="form-control" value="{{ system.db_info if system else '' }}" placeholder="如：MySQL 8.0 + Redis 7">
+                </div>
+                <div class="form-group">
+                    <label>中间件</label>
+                    <input type="text" name="middleware" class="form-control" value="{{ system.middleware if system else '' }}" placeholder="如：Nginx + RabbitMQ + Kafka">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>部署路径</label>
+                    <input type="text" name="deploy_path" class="form-control" value="{{ system.deploy_path if system else '' }}" placeholder="如：/opt/apps/trade/">
+                </div>
+                <div class="form-group">
+                    <label>源码仓库</label>
+                    <input type="text" name="source_repo" class="form-control" value="{{ system.source_repo if system else '' }}" placeholder="如：git@git.example.com:trade.git">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>监控地址</label>
+                <input type="text" name="monitor_url" class="form-control" value="{{ system.monitor_url if system else '' }}" placeholder="如：https://grafana.example.com/d/trade">
+            </div>
+            <div class="form-group">
+                <label>备注</label>
+                <textarea name="remark" class="form-control" rows="2">{{ system.remark if system else '' }}</textarea>
+            </div>
+
+            <h3 style="margin:20px 0 16px; font-size:16px;">关联设备</h3>
+            <div style="max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:12px;">
+                {% for d in devices %}
+                <label style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); cursor:pointer;">
+                    <input type="checkbox" name="device_ids" value="{{ d.id }}"
+                        {{ 'checked' if linked and d.id in linked }}>
+                    <span style="font-weight:600; min-width:160px;">{{ d.name }}</span>
+                    <span class="badge badge-secondary">{{ d.type_name }}</span>
+                    {% if d.category == 'hardware' or d.category == 'network' %}
+                    <code style="font-size:12px;">{{ d.biz_ip or '-' }}</code>
+                    {% endif %}
+                    <input type="text" name="device_role_{{ d.id }}" class="form-control"
+                        value="{{ linked[d.id] if linked and d.id in linked else '' }}"
+                        placeholder="角色（如：Web服务器、数据库主节点）"
+                        style="width:200px; padding:4px 8px; font-size:12px; margin-left:auto;">
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="btn-group mt-4">
+                <button type="submit" class="btn btn-primary">{{ '保存修改' if system else '创建系统' }}</button>
+                <a href="{{ url_for('systems.system_list') }}" class="btn btn-outline">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

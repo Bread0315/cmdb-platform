@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% block title %}{{ device.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📋 {{ device.name }}</h1>
+    <div class="btn-group">
+        {% if current_user.role != 'viewer' %}
+        <a href="{{ url_for('devices.device_edit', did=device.id) }}" class="btn btn-primary">编辑</a>
+        {% endif %}
+        <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">← 返回列表</a>
+    </div>
+</div>
+
+<!-- 基本信息 -->
+<div class="card">
+    <div class="card-header">基本信息</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">设备名称</div>
+                <div class="value">{{ device.name }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">设备类型</div>
+                <div class="value"><span class="badge badge-secondary">{{ device.type_name }}</span></div>
+            </div>
+            <div class="detail-item">
+                <div class="label">设备分类</div>
+                <div class="value">
+                    {% if device.category == 'hardware' %}<span class="badge badge-primary">硬件资产</span>
+                    {% elif device.category == 'network' %}<span class="badge badge-success">网络设备</span>
+                    {% elif device.category == 'software' %}<span class="badge badge-info">软件资产</span>
+                    {% elif device.category == 'infrastructure' %}<span class="badge badge-warning">机房基础设施</span>
+                    {% elif device.category == 'office' %}<span class="badge badge-warning">办公类资产</span>
+                    {% else %}<span class="badge badge-secondary">其他配件</span>{% endif %}
+                </div>
+            </div>
+            <div class="detail-item">
+                <div class="label">生命周期状态</div>
+                <div class="value"><span class="badge badge-success">{{ device.state_name }}</span></div>
+            </div>
+            <div class="detail-item">
+                <div class="label">品牌</div>
+                <div class="value">{{ device.brand or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">型号</div>
+                <div class="value">{{ device.model or '-' }}</div>
+            </div>
+            {% if device.category != 'software' %}
+            <div class="detail-item">
+                <div class="label">资产编号</div>
+                <div class="value">{{ device.asset_code or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">SN码</div>
+                <div class="value"><code>{{ device.serial_number or '-' }}</code></div>
+            </div>
+            {% endif %}
+            {% if device.category == 'office' %}
+            <div class="detail-item">
+                <div class="label">领用人</div>
+                <div class="value">{{ device.user_name or '-' }}</div>
+            </div>
+            {% endif %}
+            {% if device.category == 'software' %}
+            <div class="detail-item">
+                <div class="label">数量</div>
+                <div class="value">{{ device.quantity or 1 }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 网络与位置 -->
+{% if device.category == 'hardware' or device.category == 'network' %}
+<div class="card">
+    <div class="card-header">网络与位置</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">业务 IP</div>
+                <div class="value"><code>{{ device.biz_ip or '-' }}</code></div>
+            </div>
+            <div class="detail-item">
+                <div class="label">带外 IP</div>
+                <div class="value"><code>{{ device.oob_ip or '-' }}</code></div>
+            </div>
+            <div class="detail-item">
+                <div class="label">MAC 地址</div>
+                <div class="value"><code>{{ device.mac_address or '-' }}</code></div>
+            </div>
+            <div class="detail-item">
+                <div class="label">所属机房</div>
+                <div class="value">{{ device.room_name or '未分配' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">所属机柜</div>
+                <div class="value">{{ device.cabinet_name or '未分配' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">U 位</div>
+                <div class="value">{{ device.u_position or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">设备高度</div>
+                <div class="value">{{ device.u_height or 1 }}U</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">所属部门</div>
+                <div class="value">{{ device.department or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">负责人</div>
+                <div class="value">{{ device.custodian or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">标签</div>
+                <div class="value">
+                    {% if device.tag %}
+                    <div class="tag-list">
+                        {% for t in device.tag.split(',') %}
+                        <span class="tag">{{ t.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif device.category == 'infrastructure' %}
+<div class="card">
+    <div class="card-header">机房基础设施信息</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">所属机房</div>
+                <div class="value">{{ device.room_name or '未分配' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">所属部门</div>
+                <div class="value">{{ device.department or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">负责人</div>
+                <div class="value">{{ device.custodian or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">标签</div>
+                <div class="value">
+                    {% if device.tag %}
+                    <div class="tag-list">
+                        {% for t in device.tag.split(',') %}
+                        <span class="tag">{{ t.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif device.category == 'software' %}
+<div class="card">
+    <div class="card-header">软件资产信息</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">所属部门</div>
+                <div class="value">{{ device.department or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">负责人</div>
+                <div class="value">{{ device.custodian or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">标签</div>
+                <div class="value">
+                    {% if device.tag %}
+                    <div class="tag-list">
+                        {% for t in device.tag.split(',') %}
+                        <span class="tag">{{ t.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif device.category == 'office' %}
+<div class="card">
+    <div class="card-header">办公资产信息</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">所属部门</div>
+                <div class="value">{{ device.department or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">负责人</div>
+                <div class="value">{{ device.custodian or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">领用人</div>
+                <div class="value">{{ device.user_name or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">标签</div>
+                <div class="value">
+                    {% if device.tag %}
+                    <div class="tag-list">
+                        {% for t in device.tag.split(',') %}
+                        <span class="tag">{{ t.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 采购信息 -->
+<div class="card">
+    <div class="card-header">采购信息</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">上架时间</div>
+                <div class="value">{{ device.rack_date or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">保修到期</div>
+                <div class="value">{{ device.warranty_date or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">采购价格</div>
+                <div class="value">¥{{ '%.2f'|format(device.purchase_price) if device.purchase_price else '0.00' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">创建人</div>
+                <div class="value">{{ device.creator_name or '-' }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">创建时间</div>
+                <div class="value">{{ device.created_at }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">最后更新</div>
+                <div class="value">{{ device.updated_at }}</div>
+            </div>
+        </div>
+        {% if device.remark %}
+        <div class="mt-4">
+            <div class="label" style="font-size:13px;color:var(--text-muted);">备注</div>
+            <div style="margin-top:4px;padding:12px;background:var(--bg);border-radius:8px;">{{ device.remark }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 关联业务系统 -->
+<div class="card">
+    <div class="card-header">关联业务系统</div>
+    <div class="card-body">
+        {% if systems %}
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>系统名称</th><th>类型</th><th>状态</th><th>部门</th><th>负责人</th><th>设备角色</th></tr></thead>
+                <tbody>
+                {% for sys in systems %}
+                <tr>
+                    <td><a href="{{ url_for('systems.system_detail', sid=sys.id) }}" style="font-weight:600;">{{ sys.name }}</a></td>
+                    <td>{{ sys.sys_type or '-' }}</td>
+                    <td>
+                        {% if sys.status == 'running' %}<span class="badge badge-success">运行中</span>
+                        {% elif sys.status == 'stopped' %}<span class="badge badge-danger">已停止</span>
+                        {% elif sys.status == 'maintenance' %}<span class="badge badge-warning">维护中</span>
+                        {% else %}<span class="badge badge-secondary">{{ sys.status }}</span>{% endif %}
+                    </td>
+                    <td>{{ sys.department or '-' }}</td>
+                    <td>{{ sys.owner or '-' }}</td>
+                    <td>{{ sys.role or '-' }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">未关联任何业务系统</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 关联软件资产 -->
+{% if software_assets %}
+<div class="card">
+    <div class="card-header">安装的软件资产</div>
+    <div class="card-body">
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>软件名称</th><th>类型</th><th>品牌</th><th>版本</th><th>关联类型</th></tr></thead>
+                <tbody>
+                {% for sw in software_assets %}
+                <tr>
+                    <td><a href="{{ url_for('devices.device_detail', did=sw.id) }}" style="font-weight:600;">{{ sw.name }}</a></td>
+                    <td><span class="badge badge-info">{{ sw.type_name }}</span></td>
+                    <td>{{ sw.brand or '-' }}</td>
+                    <td>{{ sw.model or '-' }}</td>
+                    <td><span class="badge badge-secondary">{{ sw.rel_type }}</span></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 运行此设备的硬件 -->
+{% if hardware_assets %}
+<div class="card">
+    <div class="card-header">运行的硬件资产</div>
+    <div class="card-body">
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>硬件名称</th><th>类型</th><th>品牌</th><th>型号</th><th>关联类型</th></tr></thead>
+                <tbody>
+                {% for hw in hardware_assets %}
+                <tr>
+                    <td><a href="{{ url_for('devices.device_detail', did=hw.id) }}" style="font-weight:600;">{{ hw.name }}</a></td>
+                    <td><span class="badge badge-info">{{ hw.type_name }}</span></td>
+                    <td>{{ hw.brand or '-' }}</td>
+                    <td>{{ hw.model or '-' }}</td>
+                    <td><span class="badge badge-secondary">{{ hw.rel_type }}</span></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 操作日志 -->
+<div class="card">
+    <div class="card-header">操作记录</div>
+    <div class="card-body">
+        {% if logs %}
+        <ul class="timeline">
+            {% for log in logs %}
+            <li class="timeline-item">
+                <div class="timeline-time">{{ log.created_at }} · {{ log.username or '系统' }}</div>
+                <div class="timeline-content">
+                    <span class="badge badge-primary">{{ log.action }}</span>
+                    {{ log.detail }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center">暂无操作记录</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

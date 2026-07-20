@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}仪表盘{% endblock %}
+{% block content %}
+
+<div class="db">
+    <!-- 顶部横幅 -->
+    <div class="db-banner">
+        <div class="db-banner-l">
+            <h1>IT 资产运维控制台</h1>
+            <p>欢迎回来，{{ current_user.real_name or current_user.username }}</p>
+        </div>
+        <div class="db-banner-r">
+            <div class="db-banner-item"><b>{{ stats.total_devices }}</b><span>资产总数</span></div>
+            <div class="db-banner-item"><b class="c-green">{{ stats.online_devices }}</b><span>运行中</span></div>
+            <div class="db-banner-item"><b class="c-orange">{{ stats.total_systems }}</b><span>业务系统</span></div>
+        </div>
+        <div class="db-banner-time" id="clock"></div>
+    </div>
+
+    <!-- 指标卡片 -->
+    <div class="db-cards">
+        <a href="{{ url_for('devices.device_list') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#5b5ea6,#7a7dc9)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="22" x2="18" y2="22"/></svg></span><div><b>{{ stats.total_devices }}</b><small>资产总数</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='hardware') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#5b5ea6,#8b8fc7)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></span><div><b>{{ stats.cat_hardware }}</b><small>硬件资产</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='network') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#2ebd8a,#5edba5)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span><div><b>{{ stats.cat_network }}</b><small>网络设备</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='infrastructure') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#e8a838,#f0c060)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><div><b>{{ stats.cat_infrastructure }}</b><small>基础设施</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='software') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#9b8ec4,#b5aad6)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span><div><b>{{ stats.cat_software }}</b><small>软件资产</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='office') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#6fb5a0,#8fc9b8)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><div><b>{{ stats.cat_office }}</b><small>办公资产</small></div></a>
+        <a href="{{ url_for('rooms.room_list') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#5b9bd5,#7fb5e3)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><div><b>{{ stats.total_rooms }}</b><small>机房</small></div></a>
+        <a href="{{ url_for('devices.device_list', warranty='soon') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#e05d6f,#ea808f)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span><div><b>{{ stats.warranty_alert }}</b><small>保修预警</small></div></a>
+    </div>
+
+    <!-- 第一行：趋势图 + 机房统计 -->
+    <div class="db-row-3">
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>资产数量趋势</h3></div>
+            <div class="db-panel-b" style="padding:8px 12px"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>资产价值趋势</h3></div>
+            <div class="db-panel-b" style="padding:8px 12px"><canvas id="valueTrendChart"></canvas></div>
+        </div>
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>机房概览</h3></div>
+            <div class="db-panel-b">
+                {% for rs in stats.room_stats %}
+                <div class="db-room-item">
+                    <div class="db-room-top">
+                        <span class="db-room-name">{{ rs.name }}</span>
+                    </div>
+                    <div class="db-room-bars">
+                        <div class="db-room-bar-item">
+                            <span>IP</span>
+                            <div class="db-room-bar"><div class="db-room-bar-fill" style="width:{{ rs.ip_pct }}%;background:var(--primary);"></div></div>
+                            <span>{{ rs.ip_pct }}%</span>
+                        </div>
+                        <div class="db-room-bar-item">
+                            <span>机柜</span>
+                            <div class="db-room-bar"><div class="db-room-bar-fill" style="width:{{ rs.cab_pct }}%;background:var(--success);"></div></div>
+                            <span>{{ rs.cab_pct }}%</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二行：资产价值 + IP地址池 -->
+    <div class="db-row-12">
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>资产价值</h3></div>
+            <div class="db-panel-b db-value-scroll">
+                <div class="db-value-total-row">
+                    <span class="db-vt-num">¥{{ '{:,.0f}'.format(stats.total_value) }}</span>
+                    <span class="db-vt-sub">运行中 <b class="c-green">¥{{ '{:,.0f}'.format(stats.active_value) }}</b></span>
+                    <span class="db-vt-sub">已下架 <b class="c-orange">¥{{ '{:,.0f}'.format(stats.idle_value) }}</b></span>
+                </div>
+                {% for room_name, room_data in stats.room_values.items() %}
+                <div class="db-rv-block">
+                    <div class="db-rv-header">
+                        <span>{{ room_name }}</span>
+                        <span>¥{{ '{:,.0f}'.format(room_data.total) }}</span>
+                    </div>
+                    {% for item in room_data.categories %}
+                    {% set running_pct = (item.running / room_data.total * 100) if room_data.total > 0 else 0 %}
+                    {% set idle_pct = (item.idle / room_data.total * 100) if room_data.total > 0 else 0 %}
+                    <div class="db-rv-row" title="{{ item.cat }}&#10;运行中: ¥{{ '{:,.0f}'.format(item.running) }}{% if item.idle > 0 %}&#10;已下架: ¥{{ '{:,.0f}'.format(item.idle) }}{% endif %}&#10;合计: ¥{{ '{:,.0f}'.format(item.total) }}">
+                        <span class="db-rv-cat">{{ item.cat }}</span>
+                        <div class="db-rv-bar">
+                            <div class="db-rv-seg running" style="width:{{ running_pct }}%;"></div>
+                            <div class="db-rv-seg idle" style="width:{{ idle_pct }}%;"></div>
+                        </div>
+                        <span class="db-rv-val">¥{{ '{:,.0f}'.format(item.total) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="db-panel">
+            <div class="db-panel-h">
+                <h3>IP地址池</h3>
+                <a href="{{ url_for('ip_pools.ip_pool') }}">管理 →</a>
+            </div>
+            <div class="db-panel-b">
+                <div class="db-ip-summary">
+                    <span>共 <b>{{ stats.total_ip_pools }}</b> 个池</span>
+                    <span>总计 <b>{{ stats.total_ips }}</b> IP</span>
+                    <span>已用 <b class="c-orange">{{ stats.used_ips }}</b></span>
+                    <span>可用 <b class="c-green">{{ stats.total_ips - stats.used_ips }}</b></span>
+                </div>
+                <div class="db-ip-grid">
+                    {% for room_name, room_pools in stats.pools_by_room.items() %}
+                    <div class="db-ip-room">
+                        <div class="db-ip-room-h">{{ room_name }}</div>
+                        {% for pid, pool in room_pools.items() %}
+                        {% set segs = stats.pool_segments.get(pid, []) %}
+                        <a href="{{ url_for('ip_pools.ip_pool_detail', pid=pid) }}" class="db-ip-item">
+                            <div class="db-ip-item-l">
+                                <span class="db-ip-item-name">{{ pool.name }}</span>
+                                <span class="db-ip-item-seg">{% for seg in segs %}{% if seg.room_name == room_name %}{{ seg.network }}/{{ seg.mask }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}</span>
+                            </div>
+                            <div class="db-ip-item-r">
+                                <span>{{ pool.used_ips }}/{{ pool.total_ips }}</span>
+                                <div class="db-ip-bar"><div class="db-ip-bar-fill" style="width:{{ (pool.used_ips / pool.total_ips * 100) if pool.total_ips > 0 else 0 }}%"></div></div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第三行：图表 + 快捷操作 -->
+    <div class="db-row-21">
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>资产分类分布</h3></div>
+            <div class="db-panel-b" style="display:flex;align-items:center;justify-content:center"><canvas id="chart1"></canvas></div>
+        </div>
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>资产数量 TOP</h3></div>
+            <div class="db-panel-b" style="display:flex;align-items:center;justify-content:center"><canvas id="chart2"></canvas></div>
+        </div>
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>快捷操作</h3></div>
+            <div class="db-panel-b">
+                <div class="db-quick">
+                    {% if current_user.role != 'viewer' %}
+                    <a href="{{ url_for('devices.device_add') }}" class="db-btn p">+ 新增资产</a>
+                    <a href="{{ url_for('rooms.room_add') }}" class="db-btn">+ 新增机房</a>
+                    <a href="{{ url_for('systems.system_add') }}" class="db-btn">+ 新增系统</a>
+                    {% endif %}
+                    <a href="{{ url_for('ip_pools.ip_pool') }}" class="db-btn">IP管理</a>
+                    <a href="/api/devices/export" class="db-btn">导出CSV</a>
+                    <a href="{{ url_for('topology.topology') }}" class="db-btn">拓扑视图</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.getElementById('clock').textContent=new Date().toLocaleString('zh-CN');
+setInterval(function(){document.getElementById('clock').textContent=new Date().toLocaleString('zh-CN')},1000);
+
+Chart.defaults.animation=false;
+Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+
+var c=['#5b5ea6','#2ebd8a','#5b9bd5','#9b8ec4','#e8a838','#e05d6f','#6fb5a0','#7ea8be'];
+new Chart(document.getElementById('chart1'),{type:'doughnut',data:{labels:{{ cat_chart_stats|map(attribute='name')|list|tojson }},datasets:[{data:{{ cat_chart_stats|map(attribute='cnt')|list|tojson }},backgroundColor:c,borderWidth:2,borderColor:'#fff'}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:10,usePointStyle:true,pointStyle:'circle'}}}}});
+
+fetch('/api/stats').then(function(r){return r.json()}).then(function(d){
+    new Chart(document.getElementById('chart2'),{type:'bar',data:{labels:d.type_stats.map(function(i){return i.name}),datasets:[{data:d.type_stats.map(function(i){return i.cnt}),backgroundColor:'rgba(91,94,166,.7)',borderRadius:4,barThickness:14}]},options:{maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'rgba(91,94,166,.06)'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:10},padding:4}}}}});
+});
+
+var trendData={{ stats.trend_data|tojson }};
+var trendLabels=trendData.map(function(i){return i.month.slice(5)});
+var trendRunning=trendData.map(function(i){return i.running});
+var trendOffline=trendData.map(function(i){return i.offline + i.scrapped});
+var trendRunningValue=trendData.map(function(i){return i.running_value / 10000});
+var trendIdleValue=trendData.map(function(i){return i.idle_value / 10000});
+
+new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:trendLabels,datasets:[
+        {label:'运行中',data:trendRunning,borderColor:'#2ebd8a',backgroundColor:'rgba(46,189,138,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#2ebd8a',borderWidth:2},
+        {label:'已下架/报废',data:trendOffline,borderColor:'#e05d6f',backgroundColor:'rgba(224,93,111,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#e05d6f',borderWidth:2}
+    ]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:8,usePointStyle:true,pointStyle:'circle'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(91,94,166,.06)'},ticks:{font:{size:9}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+});
+
+new Chart(document.getElementById('valueTrendChart'),{
+    type:'line',
+    data:{labels:trendLabels,datasets:[
+        {label:'运行中(万)',data:trendRunningValue,borderColor:'#5b5ea6',backgroundColor:'rgba(91,94,166,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#5b5ea6',borderWidth:2},
+        {label:'已下架/报废(万)',data:trendIdleValue,borderColor:'#e8a838',backgroundColor:'rgba(232,168,56,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#e8a838',borderWidth:2}
+    ]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:8,usePointStyle:true,pointStyle:'circle'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(91,94,166,.06)'},ticks:{font:{size:9},callback:function(v){return v+'万'}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+});
+</script>
+
+<style>
+.db{display:flex;flex-direction:column;gap:12px}
+
+/* 横幅 */
+.db-banner{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:linear-gradient(135deg,#1a1d35 0%,#252849 100%);border-radius:10px;color:#fff;position:relative;overflow:hidden}
+.db-banner::before{content:'';position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,rgba(91,94,166,.3) 0%,transparent 70%);pointer-events:none}
+.db-banner::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.015) 60px,rgba(255,255,255,.015) 61px);pointer-events:none}
+.db-banner-l{position:relative;z-index:1}
+.db-banner-l h1{font-size:20px;font-weight:700;margin:0 0 3px;letter-spacing:-.5px}
+.db-banner-l p{font-size:11px;color:rgba(255,255,255,.5);margin:0}
+.db-banner-r{display:flex;gap:32px;position:relative;z-index:1}
+.db-banner-item{text-align:center}
+.db-banner-item b{display:block;font-size:26px;font-weight:800;letter-spacing:-1px}
+.db-banner-item span{font-size:10px;color:rgba(255,255,255,.5)}
+.c-green{color:#2ebd8a}
+.c-orange{color:#e8a838}
+.db-banner-time{font-size:11px;color:rgba(255,255,255,.4);font-family:monospace;position:relative;z-index:1}
+
+/* 卡片 */
+.db-cards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.db-card{display:flex;align-items:center;gap:8px;padding:10px 8px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;text-decoration:none;color:inherit;transition:all .2s}
+.db-card:hover{box-shadow:0 4px 16px rgba(91,94,166,.12);transform:translateY(-1px)}
+.db-card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.db-card-icon svg{width:16px;height:16px}
+.db-card div b{display:block;font-size:18px;font-weight:800;color:var(--text);line-height:1.2}
+.db-card div small{font-size:11px;color:var(--text-muted)}
+
+/* 行布局 */
+.db-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.db-row-12{display:grid;grid-template-columns:1fr 2fr;gap:12px}
+.db-row-21{display:grid;grid-template-columns:1.5fr 1.5fr 1fr;gap:12px}
+
+/* 面板 */
+.db-panel{background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.db-panel-h{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.db-panel-h h3{margin:0;font-size:13px;font-weight:600;color:var(--text)}
+.db-panel-h a{font-size:11px;color:var(--text-muted);text-decoration:none}
+.db-panel-h a:hover{color:var(--primary)}
+.db-panel-b{padding:10px 14px;overflow:auto;flex:1;min-height:0}
+
+/* 机房概览 */
+.db-room-item{padding:6px 0}
+.db-room-item:not(:last-child){border-bottom:1px solid var(--border)}
+.db-room-top{margin-bottom:4px}
+.db-room-name{font-size:12px;font-weight:600;color:var(--text)}
+.db-room-bars{display:flex;flex-direction:column;gap:3px}
+.db-room-bar-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted)}
+.db-room-bar{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.db-room-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* 资产价值 */
+.db-value-scroll{overflow-y:auto;max-height:280px}
+.db-value-total-row{display:flex;align-items:baseline;gap:10px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}
+.db-vt-num{font-size:18px;font-weight:800;color:var(--primary);font-family:monospace}
+.db-vt-sub{font-size:11px;color:var(--text-muted)}
+.db-vt-sub b{font-weight:600}
+.db-rv-block{background:var(--bg);border-radius:6px;padding:8px 10px;margin-bottom:6px}
+.db-rv-block:last-child{margin-bottom:0}
+.db-rv-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.db-rv-header span:first-child{font-size:12px;font-weight:600;color:var(--text)}
+.db-rv-header span:last-child{font-size:12px;font-weight:700;color:var(--primary)}
+.db-rv-row{display:flex;align-items:center;gap:6px;padding:2px 0;cursor:default}
+.db-rv-row:hover{background:rgba(255,255,255,.5);border-radius:3px}
+.db-rv-cat{width:48px;font-size:11px;color:var(--text-secondary);text-align:right;flex-shrink:0}
+.db-rv-bar{flex:1;height:8px;background:var(--border);border-radius:3px;overflow:hidden;display:flex}
+.db-rv-seg{height:100%;min-width:2px;transition:width .3s}
+.db-rv-seg.running{background:linear-gradient(90deg,#5b5ea6,#8b8fc7)}
+.db-rv-seg.idle{background:linear-gradient(90deg,#e8a838,#f0c060)}
+.db-rv-val{width:65px;font-size:11px;font-weight:600;color:var(--text);text-align:right;flex-shrink:0}
+
+/* IP地址池 */
+.db-ip-summary{display:flex;gap:14px;font-size:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.db-ip-summary b{font-weight:600}
+.db-ip-grid{display:grid;grid-template-columns:repeat({{ stats.pools_by_room|length }},1fr);gap:8px}
+.db-ip-room{background:var(--bg);border-radius:5px;padding:6px}
+.db-ip-room-h{font-size:11px;font-weight:600;color:var(--primary);padding:4px 6px;margin-bottom:4px;background:var(--card-bg);border-radius:3px}
+.db-ip-item{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;border-radius:3px;text-decoration:none;color:inherit;transition:background .15s}
+.db-ip-item:hover{background:var(--card-bg)}
+.db-ip-item-l{display:flex;flex-direction:column;gap:1px;min-width:0}
+.db-ip-item-name{font-size:11px;font-weight:600;color:var(--text)}
+.db-ip-item-seg{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.db-ip-item-r{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;margin-left:6px}
+.db-ip-item-r span{font-size:10px;color:var(--text-muted)}
+.db-ip-bar{width:50px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.db-ip-bar-fill{height:100%;background:linear-gradient(90deg,#5b5ea6,#2ebd8a);border-radius:2px}
+
+/* 快捷操作 */
+.db-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.db-btn{display:flex;align-items:center;justify-content:center;padding:8px;border-radius:6px;background:var(--bg);border:1px solid var(--border);font-size:12px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all .15s}
+.db-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(91,94,166,.04)}
+.db-btn.p{background:rgba(91,94,166,.08);border-color:rgba(91,94,166,.15);color:#5b5ea6;font-weight:600}
+.db-btn.p:hover{background:rgba(91,94,166,.12)}
+
+/* 图表 */
+.db-panel-b canvas{max-width:100%}
+
+/* 响应式 */
+@media(max-width:1200px){.db-cards{grid-template-columns:repeat(4,1fr)}.db-row-3,.db-row-21{grid-template-columns:1fr}.db-row-12{grid-template-columns:1fr}}
+@media(max-width:900px){.db-banner{flex-direction:column;text-align:center;gap:12px}.db-banner-r{justify-content:center}.db-cards{grid-template-columns:repeat(4,1fr)}.db-quick{grid-template-columns:repeat(2,1fr)}.db-ip-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.db-cards{grid-template-columns:repeat(2,1fr)}.db-banner-r{gap:20px}.db-ip-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}

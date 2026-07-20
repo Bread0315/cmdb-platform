@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统初始化 - CMDB资产管理平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1d35 0%, #252849 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .init-container {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.3);
+            overflow: hidden;
+        }
+        .init-header {
+            background: linear-gradient(135deg, #5b5ea6 0%, #7a7dc9 100%);
+            padding: 32px;
+            text-align: center;
+            color: #fff;
+        }
+        .init-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .init-header p {
+            font-size: 14px;
+            opacity: .8;
+        }
+        .init-body {
+            padding: 32px;
+        }
+        .init-step {
+            margin-bottom: 24px;
+        }
+        .init-step-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .init-step-num {
+            width: 24px;
+            height: 24px;
+            background: #5b5ea6;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .db-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .db-option {
+            border: 2px solid #e4e7f0;
+            border-radius: 12px;
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .db-option:hover {
+            border-color: #5b5ea6;
+            background: rgba(91,94,166,.04);
+        }
+        .db-option.active {
+            border-color: #5b5ea6;
+            background: rgba(91,94,166,.08);
+        }
+        .db-option-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            background: linear-gradient(135deg, #5b5ea6, #7a7dc9);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .db-option-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: #fff;
+            fill: none;
+            stroke-width: 2;
+        }
+        .db-option-icon.mysql {
+            background: linear-gradient(135deg, #00758f, #f29111);
+        }
+        .db-option-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .db-option-desc {
+            font-size: 12px;
+            color: #999;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e4e7f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+            transition: border-color .2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #5b5ea6;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .mysql-config {
+            display: none;
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8f9fc;
+            border-radius: 10px;
+        }
+        .mysql-config.show {
+            display: block;
+        }
+        .init-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #5b5ea6, #7a7dc9);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .init-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(91,94,166,.3);
+        }
+        .init-btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .init-footer {
+            text-align: center;
+            padding: 16px 32px;
+            background: #f8f9fc;
+            border-top: 1px solid #e4e7f0;
+        }
+        .init-footer p {
+            font-size: 12px;
+            color: #999;
+        }
+        .error-msg {
+            background: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: #ff4d4f;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .error-msg.show {
+            display: block;
+        }
+        .success-msg {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            color: #52c41a;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .success-msg.show {
+            display: block;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e4e7f0;
+            border-top-color: #5b5ea6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="init-container">
+        <div class="init-header">
+            <h1>CMDB 资产管理平台</h1>
+            <p>系统初始化向导</p>
+        </div>
+
+        <div class="init-body" id="initForm">
+            <div class="error-msg" id="errorMsg"></div>
+            <div class="success-msg" id="successMsg"></div>
+
+            <div class="init-step">
+                <div class="init-step-title">
+                    <span class="init-step-num">1</span>
+                    选择数据库类型
+                </div>
+                <div class="db-options">
+                    <div class="db-option active" data-type="sqlite" onclick="selectDb('sqlite')">
+                        <div class="db-option-icon">
+                            <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                        </div>
+                        <div class="db-option-name">SQLite</div>
+                        <div class="db-option-desc">轻量级，无需安装</div>
+                    </div>
+                    <div class="db-option" data-type="mysql" onclick="selectDb('mysql')">
+                        <div class="db-option-icon mysql">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                        </div>
+                        <div class="db-option-name">MySQL</div>
+                        <div class="db-option-desc">生产环境推荐</div>
+                    </div>
+                </div>
+
+                <div class="mysql-config" id="mysqlConfig">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>主机地址</label>
+                            <input type="text" name="mysql_host" value="127.0.0.1" placeholder="127.0.0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>端口</label>
+                            <input type="number" name="mysql_port" value="3306" placeholder="3306">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" name="mysql_user" value="root" placeholder="root">
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" name="mysql_password" placeholder="数据库密码">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>数据库名</label>
+                        <input type="text" name="mysql_database" value="cmdb" placeholder="cmdb">
+                    </div>
+                </div>
+            </div>
+
+            <button class="init-btn" id="initBtn" onclick="startInit()">初始化系统</button>
+        </div>
+
+        <div class="loading" id="loadingView">
+            <div class="loading-spinner"></div>
+            <p style="color:#666;">正在初始化系统，请稍候...</p>
+        </div>
+
+        <div class="init-footer">
+            <p>CMDB Asset Management Platform v1.0</p>
+        </div>
+    </div>
+
+    <script>
+    var selectedDb = 'sqlite';
+
+    function selectDb(type) {
+        selectedDb = type;
+        document.querySelectorAll('.db-option').forEach(function(el) {
+            el.classList.toggle('active', el.dataset.type === type);
+        });
+        document.getElementById('mysqlConfig').classList.toggle('show', type === 'mysql');
+    }
+
+    function showError(msg) {
+        var el = document.getElementById('errorMsg');
+        el.textContent = msg;
+        el.classList.add('show');
+        document.getElementById('successMsg').classList.remove('show');
+    }
+
+    function showSuccess(msg) {
+        var el = document.getElementById('successMsg');
+        el.textContent = msg;
+        el.classList.add('show');
+        document.getElementById('errorMsg').classList.remove('show');
+    }
+
+    function startInit() {
+        document.getElementById('errorMsg').classList.remove('show');
+        document.getElementById('successMsg').classList.remove('show');
+
+        var config = { db_type: selectedDb };
+
+        if (selectedDb === 'mysql') {
+            config.mysql_host = document.querySelector('[name="mysql_host"]').value || '127.0.0.1';
+            config.mysql_port = parseInt(document.querySelector('[name="mysql_port"]').value) || 3306;
+            config.mysql_user = document.querySelector('[name="mysql_user"]').value || 'root';
+            config.mysql_password = document.querySelector('[name="mysql_password"]').value;
+            config.mysql_database = document.querySelector('[name="mysql_database"]').value || 'cmdb';
+
+            if (!config.mysql_user) {
+                showError('请输入数据库用户名');
+                return;
+            }
+            if (!config.mysql_database) {
+                showError('请输入数据库名');
+                return;
+            }
+        }
+
+        document.getElementById('initBtn').disabled = true;
+        document.getElementById('initForm').style.display = 'none';
+        document.getElementById('loadingView').classList.add('show');
+
+        fetch('/init/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                document.getElementById('loadingView').innerHTML =
+                    '<div style="text-align:center;padding:40px;">' +
+                    '<div style="font-size:48px;margin-bottom:16px;">✓</div>' +
+                    '<p style="color:#52c41a;font-size:16px;font-weight:600;margin-bottom:8px;">初始化成功！</p>' +
+                    '<p style="color:#666;margin-bottom:20px;">系统正在跳转到登录页面...</p>' +
+                    '</div>';
+                setTimeout(function() { window.location.href = '/login'; }, 2000);
+            } else {
+                document.getElementById('initForm').style.display = 'block';
+                document.getElementById('loadingView').classList.remove('show');
+                document.getElementById('initBtn').disabled = false;
+                showError(data.message || '初始化失败');
+            }
+        })
+        .catch(function(err) {
+            document.getElementById('initForm').style.display = 'block';
+            document.getElementById('loadingView').classList.remove('show');
+            document.getElementById('initBtn').disabled = false;
+            showError('网络错误: ' + err.message);
+        });
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}服务器错误{% endblock %}
+{% block fullpage %}
+<div class="login-wrapper">
+    <div class="login-card" style="text-align:center;">
+        <h1 style="font-size:72px;color:var(--danger);margin-bottom:8px;">500</h1>
+        <p class="subtitle">服务器内部错误</p>
+        <p style="color:var(--text-muted);margin-bottom:24px;">服务器遇到了问题，请稍后重试</p>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-primary">返回首页</a>
+    </div>
+</div>
+{% endblock %}

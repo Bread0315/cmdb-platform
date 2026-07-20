@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ system.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>⚡ {{ system.name }}</h1>
+    <div class="btn-group">
+        {% if current_user.role != 'viewer' %}
+        <a href="{{ url_for('systems.system_edit', sid=system.id) }}" class="btn btn-primary">编辑</a>
+        {% endif %}
+        <a href="{{ url_for('systems.system_list') }}" class="btn btn-outline">← 返回列表</a>
+    </div>
+</div>
+
+<!-- 基本信息 -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div class="card" style="margin-bottom:0;">
+        <div class="card-header">基本信息</div>
+        <div class="card-body">
+            <div class="detail-item"><div class="label">系统名称</div><div class="value" style="font-weight:600;">{{ system.name }}</div></div>
+            <div class="detail-item"><div class="label">系统类型</div><div class="value">{{ system.sys_type or '-' }}</div></div>
+            <div class="detail-item"><div class="label">运行状态</div><div class="value">
+                {% if system.status == 'running' %}<span class="badge badge-success">运行中</span>
+                {% elif system.status == 'stopped' %}<span class="badge badge-danger">已停止</span>
+                {% elif system.status == 'maintenance' %}<span class="badge badge-warning">维护中</span>
+                {% elif system.status == 'testing' %}<span class="badge badge-info">测试中</span>
+                {% elif system.status == 'planned' %}<span class="badge badge-secondary">规划中</span>
+                {% else %}<span class="badge badge-secondary">{{ system.status }}</span>{% endif %}
+            </div></div>
+            <div class="detail-item"><div class="label">所属部门</div><div class="value">{{ system.department or '-' }}</div></div>
+            <div class="detail-item"><div class="label">业务负责人</div><div class="value">{{ system.owner or '-' }}</div></div>
+            <div class="detail-item"><div class="label">开发负责人</div><div class="value">{{ system.developer or '-' }}</div></div>
+            <div class="detail-item"><div class="label">描述</div><div class="value">{{ system.description or '-' }}</div></div>
+        </div>
+    </div>
+    <div class="card" style="margin-bottom:0;">
+        <div class="card-header">技术信息</div>
+        <div class="card-body">
+            <div class="detail-item"><div class="label">业务域名</div><div class="value"><code>{{ system.biz_domain or '-' }}</code></div></div>
+            <div class="detail-item"><div class="label">技术栈</div><div class="value">{{ system.tech_stack or '-' }}</div></div>
+            <div class="detail-item"><div class="label">数据库</div><div class="value">{{ system.db_info or '-' }}</div></div>
+            <div class="detail-item"><div class="label">中间件</div><div class="value">{{ system.middleware or '-' }}</div></div>
+            <div class="detail-item"><div class="label">部署路径</div><div class="value"><code>{{ system.deploy_path or '-' }}</code></div></div>
+            <div class="detail-item"><div class="label">源码仓库</div><div class="value"><code>{{ system.source_repo or '-' }}</code></div></div>
+            <div class="detail-item"><div class="label">监控地址</div><div class="value">{% if system.monitor_url %}<a href="{{ system.monitor_url }}" target="_blank">{{ system.monitor_url }}</a>{% else %}-{% endif %}</div></div>
+            <div class="detail-item"><div class="label">备注</div><div class="value">{{ system.remark or '-' }}</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- 关联设备统计 -->
+<div class="stat-cards" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">🖥</div>
+        <div><div class="stat-value">{{ devices|length }}</div><div class="stat-label">关联设备</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div><div class="stat-value">{{ devices|selectattr('state_name','equalto','运行中')|list|length }}</div><div class="stat-label">运行中</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">📦</div>
+        <div><div class="stat-value">{{ devices|selectattr('state_name','equalto','已下架')|list|length }}</div><div class="stat-label">已下架</div></div>
+    </div>
+</div>
+
+<!-- 关联设备 -->
+<div class="card">
+    <div class="card-header">
+        关联设备
+        <span class="text-muted" style="font-weight:400;font-size:13px;">共 {{ devices|length }} 台</span>
+    </div>
+    <div class="card-body">
+        {% if devices %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>设备名称</th><th>类型</th><th>分类</th>
+                        {% if devices | selectattr('category', 'equalto', 'hardware') | list %}
+                        <th>业务IP</th><th>带外IP</th><th>位置</th><th>机柜</th><th>U位</th>
+                        {% endif %}
+                        <th>状态</th><th>在系统中的角色</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in devices %}
+                    <tr>
+                        <td><a href="{{ url_for('devices.device_detail', did=d.id) }}" style="font-weight:600;">{{ d.name }}</a></td>
+                        <td><span class="badge badge-secondary">{{ d.type_name }}</span></td>
+                        <td>
+                            {% if d.category == 'hardware' %}<span class="badge badge-primary">硬件</span>
+                            {% elif d.category == 'network' %}<span class="badge badge-success">网络</span>
+                            {% elif d.category == 'software' %}<span class="badge badge-info">软件</span>
+                            {% elif d.category == 'infrastructure' %}<span class="badge badge-warning">基础设施</span>
+                            {% else %}<span class="badge badge-secondary">{{ d.category }}</span>{% endif %}
+                        </td>
+                        {% if d.category == 'hardware' or d.category == 'network' %}
+                        <td><code>{{ d.biz_ip or '-' }}</code></td>
+                        <td><code>{{ d.oob_ip or '-' }}</code></td>
+                        <td>{{ d.location or '-' }}</td>
+                        <td>{{ d.cabinet_name or '-' }}</td>
+                        <td>{{ d.u_position or '-' }}</td>
+                        {% endif %}
+                        <td><span class="badge badge-success">{{ d.state_name }}</span></td>
+                        <td>{{ d.role or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">未关联任何硬件设备</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-item mt-4">
+    <div class="text-muted" style="font-size:13px;">创建时间：{{ system.created_at }} · 最后更新：{{ system.updated_at }}</div>
+</div>
+{% endblock %}

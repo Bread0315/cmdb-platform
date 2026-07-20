@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+{% block title %}拓扑视图{% endblock %}
+{% block head %}
+<style>
+.topo-page { padding: 0; margin: -28px -36px; }
+
+.topo-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 28px; background: var(--card-bg); border-bottom: 1px solid var(--border);
+    position: relative; z-index: 20;
+}
+.topo-header h1 {
+    font-size: 20px; font-weight: 700; color: var(--text); margin: 0;
+}
+.topo-stats { display: flex; gap: 16px; }
+.topo-stat {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; background: var(--bg); border-radius: 20px;
+    font-size: 13px; color: var(--text-secondary);
+}
+.topo-stat-num { font-weight: 700; color: var(--text); }
+
+.topo-canvas-wrap {
+    position: relative; width: 100%; height: calc(100vh - 120px);
+    background: var(--bg); overflow: hidden;
+}
+#topoCanvas { display: block; width: 100%; height: 100%; }
+
+.topo-search {
+    position: absolute; top: 16px; left: 16px; z-index: 10;
+}
+.topo-search-box {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+}
+.topo-search-box svg { color: var(--text-muted); flex-shrink: 0; }
+.topo-search-box input {
+    width: 220px; border: none; background: none; outline: none;
+    font-size: 13px; color: var(--text);
+}
+.topo-search-box input::placeholder { color: var(--text-muted); }
+
+.topo-info-panel {
+    position: absolute; top: 16px; right: 16px; width: 280px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg); z-index: 10;
+    box-shadow: var(--shadow-lg); transition: all .3s;
+    max-height: calc(100vh - 180px); overflow: hidden;
+}
+.topo-info-panel.hidden { opacity: 0; pointer-events: none; transform: translateX(20px); }
+.topo-info-head {
+    padding: 16px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+}
+.topo-info-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.topo-info-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.topo-info-body { padding: 14px 18px; }
+.topo-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.topo-info-row:last-child { border-bottom: none; }
+.topo-info-label { color: var(--text-muted); }
+.topo-info-value { font-weight: 600; color: var(--text); }
+.topo-info-section { margin-top: 12px; }
+.topo-info-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;
+}
+.topo-info-device {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; background: var(--bg); border-radius: 6px;
+    margin-bottom: 4px; font-size: 12px;
+}
+.topo-info-device-dot { width: 6px; height: 6px; border-radius: 50%; }
+.topo-info-link {
+    display: block; padding: 8px; margin-top: 12px; text-align: center;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    font-size: 12px; font-weight: 500; color: var(--primary); text-decoration: none;
+    transition: var(--transition);
+}
+.topo-info-link:hover { background: var(--primary); color: #fff; }
+
+.topo-legend {
+    position: absolute; bottom: 16px; left: 16px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 12px 16px; z-index: 10;
+    box-shadow: var(--shadow-sm);
+}
+.topo-legend-title {
+    font-size: 10px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;
+}
+.topo-legend-item {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px; font-size: 11px; color: var(--text-secondary);
+}
+.topo-legend-item:last-child { margin-bottom: 0; }
+.topo-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.topo-toolbar {
+    position: absolute; bottom: 16px; right: 16px;
+    display: flex; gap: 6px; z-index: 10;
+}
+.topo-toolbar button {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    color: var(--text-secondary); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition); box-shadow: var(--shadow-sm);
+}
+.topo-toolbar button:hover { background: var(--primary); color: #fff; }
+.topo-toolbar button.active { background: var(--primary); color: #fff; }
+
+.topo-empty {
+    display: flex; align-items: center; justify-content: center;
+    height: calc(100vh - 120px); background: var(--bg);
+}
+.topo-empty-box {
+    text-align: center; padding: 48px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg); max-width: 360px;
+}
+.topo-empty-icon {
+    width: 72px; height: 72px; margin: 0 auto 20px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+.topo-empty-icon svg { width: 32px; height: 32px; color: var(--text-muted); }
+.topo-empty h3 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.topo-empty p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="topo-page">
+    <div class="topo-header">
+        <h1>基础设施拓扑</h1>
+        <div class="topo-stats">
+            <div class="topo-stat"><span class="topo-stat-num" id="statSys">0</span> 业务系统</div>
+            <div class="topo-stat"><span class="topo-stat-num" id="statDev">0</span> 设备</div>
+            <div class="topo-stat"><span class="topo-stat-num" id="statLink">0</span> 连接</div>
+        </div>
+    </div>
+
+    {% if nodes %}
+    <div class="topo-canvas-wrap" id="topoWrap">
+        <canvas id="topoCanvas"></canvas>
+
+        <div class="topo-search">
+            <div class="topo-search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="topoSearch" placeholder="搜索节点..." oninput="searchNodes(this.value)">
+            </div>
+        </div>
+
+        <div class="topo-info-panel hidden" id="infoPanel">
+            <div class="topo-info-head" id="infoHead">
+                <div class="topo-info-icon" id="infoIcon"></div>
+                <div class="topo-info-name" id="infoName"></div>
+            </div>
+            <div class="topo-info-body" id="infoBody"></div>
+        </div>
+
+        <div class="topo-legend">
+            <div class="topo-legend-title">图例</div>
+            <div class="topo-legend-item"><div class="topo-legend-dot" style="background:var(--primary);"></div> 业务系统</div>
+            <div class="topo-legend-item"><div class="topo-legend-dot" style="background:var(--success);"></div> 运行中</div>
+            <div class="topo-legend-item"><div class="topo-legend-dot" style="background:var(--warning);"></div> 已下架</div>
+            <div class="topo-legend-item"><div class="topo-legend-dot" style="background:var(--danger);"></div> 已报废</div>
+        </div>
+
+        <div class="topo-toolbar">
+            <button onclick="zoomIn()" title="放大">+</button>
+            <button onclick="zoomOut()" title="缩小">-</button>
+            <button onclick="resetView()" title="重置">↺</button>
+            <button onclick="togglePhysics()" id="btnPhysics" title="物理引擎" class="active">⚡</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="topo-empty">
+        <div class="topo-empty-box">
+            <div class="topo-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="8" x2="5" y2="16"/><line x1="12" y1="8" x2="19" y2="16"/></svg>
+            </div>
+            <h3>暂无拓扑数据</h3>
+            <p>请先添加业务系统并关联设备</p>
+            <a href="{{ url_for('systems.system_add') }}" class="btn btn-primary">添加业务系统</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if nodes %}
+<script>
+const rawNodes = {{ nodes|tojson }};
+const rawLinks = {{ links|tojson }};
+const wrap = document.getElementById('topoWrap');
+const canvas = document.getElementById('topoCanvas');
+const ctx = canvas.getContext('2d');
+
+function getThemeColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return isDark ? {
+        system: '#7c7fb8', running: '#4dd4a8', warning: '#f0c060', danger: '#f07080',
+        link: 'rgba(124,127,184,.15)', linkActive: 'rgba(124,127,184,.5)',
+        bg: '#0c0f1a', text: '#e0e2f0', textMuted: '#5a6080', grid: 'rgba(124,127,184,.05)',
+    } : {
+        system: '#5b5ea6', running: '#2ebd8a', warning: '#e8a838', danger: '#e05d6f',
+        link: 'rgba(91,94,166,.12)', linkActive: 'rgba(91,94,166,.4)',
+        bg: '#f4f5f9', text: '#2c3050', textMuted: '#9498b0', grid: 'rgba(91,94,166,.05)',
+    };
+}
+let COLORS = getThemeColors();
+const getStatusColor = s => COLORS[s === '运行中' ? 'running' : s === '已下架' ? 'warning' : s === '已报废' ? 'danger' : 'running'];
+
+let nodes = rawNodes.map(n => ({
+    ...n, x: 0, y: 0, vx: 0, vy: 0,
+    r: n.type === 'system' ? 34 : 22,
+    color: n.type === 'system' ? COLORS.system : getStatusColor(n.status),
+    hovered: false, selected: false,
+    pulse: Math.random() * Math.PI * 2,
+}));
+
+let links = rawLinks.map(l => ({
+    source: nodes.find(n => n.id === l.source),
+    target: nodes.find(n => n.id === l.target),
+    active: false,
+}));
+
+document.getElementById('statSys').textContent = nodes.filter(n => n.type === 'system').length;
+document.getElementById('statDev').textContent = nodes.filter(n => n.type === 'device').length;
+document.getElementById('statLink').textContent = links.length;
+
+let view = { x: 0, y: 0, scale: 1 };
+let physicsOn = true, dragNode = null, dragView = false, time = 0;
+
+function initLayout() {
+    const w = wrap.offsetWidth, h = wrap.offsetHeight;
+    canvas.width = w * devicePixelRatio;
+    canvas.height = h * devicePixelRatio;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+    const sys = nodes.filter(n => n.type === 'system');
+    const dev = nodes.filter(n => n.type === 'device');
+    const cx = w / 2, cy = h / 2;
+
+    sys.forEach((n, i) => {
+        const a = -Math.PI / 2 + (Math.PI / Math.max(sys.length - 1, 1)) * i;
+        n.x = cx - w * 0.18 + Math.cos(a) * Math.min(w, h) * 0.12;
+        n.y = cy + Math.sin(a) * Math.min(w, h) * 0.18;
+    });
+    dev.forEach((n, i) => {
+        const a = -Math.PI / 2 + (Math.PI / Math.max(dev.length - 1, 1)) * i;
+        n.x = cx + w * 0.18 + Math.cos(a) * Math.min(w, h) * 0.14;
+        n.y = cy + Math.sin(a) * Math.min(w, h) * 0.2;
+    });
+}
+
+function applyPhysics() {
+    if (!physicsOn) return;
+    const w = wrap.offsetWidth, h = wrap.offsetHeight, cx = w / 2, cy = h / 2;
+    nodes.forEach(n => {
+        n.vx += (cx - n.x) * 0.0003;
+        n.vy += (cy - n.y) * 0.0003;
+        nodes.forEach(m => {
+            if (n === m) return;
+            const dx = n.x - m.x, dy = n.y - m.y;
+            const d = Math.sqrt(dx * dx + dy * dy) || 1;
+            const min = (n.r + m.r) * 3;
+            if (d < min) { const f = (min - d) / min * 0.3; n.vx += dx / d * f; n.vy += dy / d * f; }
+        });
+    });
+    links.forEach(l => {
+        if (!l.source || !l.target) return;
+        const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const f = (d - 180) * 0.002;
+        l.source.vx += dx / d * f; l.source.vy += dy / d * f;
+        l.target.vx -= dx / d * f; l.target.vy -= dy / d * f;
+    });
+    nodes.forEach(n => {
+        n.vx *= 0.85; n.vy *= 0.85;
+        n.x = Math.max(n.r, Math.min(w - n.r, n.x + n.vx));
+        n.y = Math.max(n.r, Math.min(h - n.r, n.y + n.vy));
+    });
+}
+
+function draw() {
+    const w = wrap.offsetWidth, h = wrap.offsetHeight;
+    time += 0.016;
+    ctx.save();
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    const gs = 50 * view.scale;
+    const ox = (view.x * view.scale) % gs, oy = (view.y * view.scale) % gs;
+    for (let x = ox; x < w; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = oy; y < h; y += gs) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+    ctx.translate(view.x, view.y);
+    ctx.scale(view.scale, view.scale);
+
+    links.forEach(l => {
+        if (!l.source || !l.target) return;
+        const sx = l.source.x, sy = l.source.y, tx = l.target.x, ty = l.target.y;
+        const mx = (sx + tx) / 2, my = (sy + ty) / 2 - 20;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.quadraticCurveTo(mx, my, tx, ty);
+        ctx.strokeStyle = l.active ? COLORS.linkActive : COLORS.link;
+        ctx.lineWidth = l.active ? 2.5 : 1;
+        ctx.stroke();
+
+        const t = ((time * 0.4) % 1);
+        const px = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * mx + t * t * tx;
+        const py = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * my + t * t * ty;
+        ctx.beginPath();
+        ctx.arc(px, py, l.active ? 3 : 2, 0, Math.PI * 2);
+        ctx.fillStyle = l.active ? COLORS.linkActive : COLORS.link;
+        ctx.fill();
+    });
+
+    nodes.forEach(n => {
+        const r = n.r, p = Math.sin(time * 2 + n.pulse) * 0.08 + 1;
+
+        if (n.type === 'system' || n.hovered || n.selected) {
+            const gr = r * 2.2 * p;
+            const g = ctx.createRadialGradient(n.x, n.y, r * 0.5, n.x, n.y, gr);
+            g.addColorStop(0, n.color + '30');
+            g.addColorStop(1, n.color + '00');
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, gr, 0, Math.PI * 2);
+            ctx.fillStyle = g;
+            ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r * p, 0, Math.PI * 2);
+        const bg = ctx.createRadialGradient(n.x - r * 0.2, n.y - r * 0.2, 0, n.x, n.y, r);
+        bg.addColorStop(0, n.color);
+        bg.addColorStop(1, n.color + 'cc');
+        ctx.fillStyle = bg;
+        ctx.fill();
+
+        ctx.strokeStyle = n.hovered || n.selected ? COLORS.text : (n.color + '80');
+        ctx.lineWidth = n.hovered || n.selected ? 2 : 1;
+        ctx.stroke();
+
+        ctx.fillStyle = COLORS.text;
+        ctx.font = `${r * 0.55}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.type === 'system' ? '⚙' : '🖥', n.x, n.y);
+
+        ctx.font = `600 ${Math.max(11, 12 / view.scale)}px -apple-system, "PingFang SC", sans-serif`;
+        ctx.fillStyle = COLORS.text;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(n.name, n.x, n.y + r * p + 6);
+
+        if (n.type === 'device') {
+            ctx.font = `500 ${Math.max(10, 10 / view.scale)}px sans-serif`;
+            ctx.fillStyle = n.color;
+            ctx.fillText(n.status, n.x, n.y + r * p + 20);
+        }
+    });
+
+    ctx.restore();
+    applyPhysics();
+    requestAnimationFrame(draw);
+}
+
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left - view.x) / view.scale, y: (e.clientY - rect.top - view.y) / view.scale };
+}
+
+function findNodeAt(pos) {
+    for (let i = nodes.length - 1; i >= 0; i--) {
+        const n = nodes[i], dx = pos.x - n.x, dy = pos.y - n.y;
+        if (dx * dx + dy * dy <= n.r * n.r * 1.5) return n;
+    }
+    return null;
+}
+
+canvas.addEventListener('mousemove', e => {
+    const pos = getMousePos(e);
+    if (dragNode) { dragNode.x = pos.x; dragNode.y = pos.y; dragNode.vx = 0; dragNode.vy = 0; return; }
+    if (dragView) { view.x += e.movementX; view.y += e.movementY; return; }
+    const hit = findNodeAt(pos);
+    nodes.forEach(n => n.hovered = false);
+    if (hit) { hit.hovered = true; canvas.style.cursor = 'pointer'; links.forEach(l => l.active = l.source === hit || l.target === hit); }
+    else { canvas.style.cursor = 'grab'; links.forEach(l => l.active = false); }
+});
+
+canvas.addEventListener('mousedown', e => {
+    const hit = findNodeAt(getMousePos(e));
+    if (hit) { dragNode = hit; canvas.style.cursor = 'grabbing'; }
+    else { dragView = true; canvas.style.cursor = 'grabbing'; }
+});
+
+canvas.addEventListener('mouseup', () => {
+    if (dragNode) showInfo(dragNode);
+    dragNode = null; dragView = false; canvas.style.cursor = 'grab';
+});
+
+canvas.addEventListener('dblclick', e => {
+    const hit = findNodeAt(getMousePos(e));
+    if (hit && hit.type === 'device') location.href = '/devices/' + hit.id.replace('dev_', '');
+    else if (hit && hit.type === 'system') location.href = '/systems/' + hit.id.replace('sys_', '');
+});
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const d = e.deltaY > 0 ? 0.9 : 1.1;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    view.x = mx - (mx - view.x) * d;
+    view.y = my - (my - view.y) * d;
+    view.scale = Math.max(0.3, Math.min(3, view.scale * d));
+}, { passive: false });
+
+function showInfo(node) {
+    document.getElementById('infoPanel').classList.remove('hidden');
+    const isSys = node.type === 'system';
+    const icon = document.getElementById('infoIcon');
+    icon.style.background = isSys ? 'rgba(91,94,166,.1)' : (node.color + '15');
+    icon.style.color = node.color;
+    icon.textContent = isSys ? '⚙' : '🖥';
+    document.getElementById('infoName').textContent = node.name;
+
+    let html = `<div class="topo-info-row"><span class="topo-info-label">类型</span><span class="topo-info-value">${isSys ? '业务系统' : '设备'}</span></div>`;
+    html += `<div class="topo-info-row"><span class="topo-info-label">状态</span><span class="topo-info-value" style="color:${node.color}">${node.status}</span></div>`;
+
+    const rels = links.filter(l => l.source === node || l.target === node);
+    html += `<div class="topo-info-row"><span class="topo-info-label">关联</span><span class="topo-info-value">${rels.length}</span></div>`;
+
+    if (isSys) {
+        const devs = rels.map(l => l.target).filter(Boolean);
+        if (devs.length) {
+            html += `<div class="topo-info-section"><div class="topo-info-section-title">关联设备 (${devs.length})</div>`;
+            devs.forEach(d => { html += `<div class="topo-info-device"><div class="topo-info-device-dot" style="background:${d.color}"></div>${d.name}</div>`; });
+            html += `</div>`;
+        }
+        html += `<a href="/systems/${node.id.replace('sys_','')}" class="topo-info-link">查看系统详情 →</a>`;
+    } else {
+        html += `<a href="/devices/${node.id.replace('dev_','')}" class="topo-info-link">查看设备详情 →</a>`;
+    }
+    document.getElementById('infoBody').innerHTML = html;
+}
+
+canvas.addEventListener('click', e => {
+    if (!findNodeAt(getMousePos(e))) document.getElementById('infoPanel').classList.add('hidden');
+});
+
+function searchNodes(q) {
+    q = q.toLowerCase().trim();
+    nodes.forEach(n => { n.selected = q && n.name.toLowerCase().includes(q); n.hovered = n.selected; });
+    if (q) { const m = nodes.find(n => n.selected); if (m) { const w = wrap.offsetWidth, h = wrap.offsetHeight; view.x = w / 2 - m.x * view.scale; view.y = h / 2 - m.y * view.scale; } }
+}
+
+function zoomIn() { view.scale = Math.min(3, view.scale * 1.2); }
+function zoomOut() { view.scale = Math.max(0.3, view.scale / 1.2); }
+function resetView() { view = { x: 0, y: 0, scale: 1 }; initLayout(); }
+function togglePhysics() {
+    physicsOn = !physicsOn;
+    document.getElementById('btnPhysics').classList.toggle('active', physicsOn);
+}
+
+initLayout();
+draw();
+window.addEventListener('resize', () => {
+    canvas.width = wrap.offsetWidth * devicePixelRatio;
+    canvas.height = wrap.offsetHeight * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+});
+
+function onThemeChange() {
+    COLORS = getThemeColors();
+    nodes.forEach(n => { n.color = n.type === 'system' ? COLORS.system : getStatusColor(n.status); });
+}
+new MutationObserver(onThemeChange).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>
+{% endif %}
+{% endblock %}

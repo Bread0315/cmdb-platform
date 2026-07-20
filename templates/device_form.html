@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑设备' if device else '新增设备' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ '编辑设备' if device else '新增设备' }}</h1>
+    <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">← 返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <!-- 基础信息 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">设备名称</label>
+                    <input type="text" name="name" class="form-control" value="{{ device.name if device else '' }}" required placeholder="如：Web服务器-01">
+                </div>
+                <div class="form-group">
+                    <label class="required">设备类型</label>
+                    <select name="device_type_id" id="device_type_select" class="form-control" required onchange="toggleFields()">
+                        <option value="">请选择类型</option>
+                        {% for t in types %}
+                        <option value="{{ t.id }}" data-category="{{ t.category }}" {{ 'selected' if device and device.device_type_id == t.id }}>{{ t.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="required">生命周期状态</label>
+                    <select name="lifecycle_state_id" class="form-control" required>
+                        {% for s in states %}
+                        <option value="{{ s.id }}" {{ 'selected' if device and device.lifecycle_state_id == s.id }}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- 品牌型号 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>品牌</label>
+                    <input type="text" name="brand" class="form-control" value="{{ device.brand if device else '' }}" placeholder="如：Dell">
+                </div>
+                <div class="form-group">
+                    <label>型号</label>
+                    <input type="text" name="model" class="form-control" value="{{ device.model if device else '' }}" placeholder="如：PowerEdge R740">
+                </div>
+                <div class="form-group">
+                    <label>SN码</label>
+                    <input type="text" name="serial_number" class="form-control" value="{{ device.serial_number if device else '' }}" placeholder="如：SN20260001">
+                </div>
+            </div>
+
+            <!-- 资产编号 - 非软件资产显示 -->
+            <div id="section-asset-code" class="form-row">
+                <div class="form-group">
+                    <label>资产编号</label>
+                    <input type="text" name="asset_code" class="form-control" value="{{ device.asset_code if device else '' }}" placeholder="如：IT-2025-001">
+                    <span class="form-hint">企业内部统一资产编号</span>
+                </div>
+                <div class="form-group" id="field-user-name" style="display:none;">
+                    <label>领用人</label>
+                    <input type="text" name="user_name" class="form-control" value="{{ device.user_name if device else '' }}" placeholder="如：张三">
+                </div>
+            </div>
+
+            <!-- 网络信息 - 仅硬件显示 -->
+            <div id="section-network" class="form-section">
+                <h4 class="form-section-title">网络信息</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>业务 IP</label>
+                        <input type="text" name="biz_ip" class="form-control" value="{{ device.biz_ip if device else '' }}" placeholder="如：192.168.1.100">
+                    </div>
+                    <div class="form-group">
+                        <label>带外 IP</label>
+                        <input type="text" name="oob_ip" class="form-control" value="{{ device.oob_ip if device else '' }}" placeholder="如：10.0.0.100">
+                    </div>
+                    <div class="form-group">
+                        <label>MAC 地址</label>
+                        <input type="text" name="mac_address" class="form-control" value="{{ device.mac_address if device else '' }}" placeholder="如：AA:BB:CC:DD:EE:FF">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 机柜位置 - 仅硬件显示 -->
+            <div id="section-rack" class="form-section">
+                <h4 class="form-section-title">机柜位置</h4>
+                <div class="form-row" style="display:flex; flex-wrap:wrap; gap:0 20px;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>所属机房</label>
+                        <select name="room_id" id="room_select" class="form-control" onchange="filterCabinets()">
+                            <option value="">请选择机房</option>
+                            {% for r in rooms %}
+                            <option value="{{ r.id }}" data-rid="{{ r.id }}" {{ 'selected' if device and device.cabinet_id and rooms and cabinets and (cabinets | selectattr('id', 'equalto', device.cabinet_id) | map(attribute='room_id') | first | default('')) == r.id }}>{{ r.name }} ({{ r.building }}{{ r.floor }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>所属机柜</label>
+                        <select name="cabinet_id" id="cabinet_select" class="form-control">
+                            <option value="">未分配</option>
+                            {% for c in cabinets %}
+                            <option value="{{ c.id }}" data-room="{{ c.room_id }}" {{ 'selected' if device and device.cabinet_id == c.id }}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:150px;">
+                        <label>U 位</label>
+                        <input type="text" name="u_position" class="form-control" value="{{ device.u_position if device else '' }}" placeholder="如：U1-U4 或 12U">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:120px;">
+                        <label>设备高度</label>
+                        <select name="u_height" class="form-control">
+                            <option value="1" {{ 'selected' if not device or device.u_height == 1 }}>1U</option>
+                            <option value="2" {{ 'selected' if device and device.u_height == 2 }}>2U</option>
+                            <option value="4" {{ 'selected' if device and device.u_height == 4 }}>4U</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 管理信息 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>所属部门</label>
+                    <input type="text" name="department" class="form-control" value="{{ device.department if device else '' }}" placeholder="如：技术部">
+                </div>
+                <div class="form-group">
+                    <label>负责人</label>
+                    <input type="text" name="custodian" class="form-control" value="{{ device.custodian if device else '' }}" placeholder="如：张三">
+                </div>
+            </div>
+
+            <!-- 采购信息 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>上架时间</label>
+                    <input type="date" name="rack_date" class="form-control" value="{{ device.rack_date if device else '' }}">
+                </div>
+                <div class="form-group">
+                    <label>保修到期</label>
+                    <input type="date" name="warranty_date" class="form-control" value="{{ device.warranty_date if device else '' }}">
+                </div>
+                <div class="form-group">
+                    <label>采购价格 (元)</label>
+                    <input type="number" name="purchase_price" class="form-control" step="0.01" min="0" value="{{ device.purchase_price if device else '' }}" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- 软件资产特有信息 -->
+            <div id="section-software" class="form-section">
+                <h4 class="form-section-title">软件资产信息</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>数量</label>
+                        <input type="number" name="quantity" class="form-control" min="1" value="{{ device.quantity if device else 1 }}" placeholder="1">
+                        <span class="form-hint">软件安装/许可数量</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 关联资产 - 根据类型显示不同内容 -->
+            <div id="section-relations" class="form-section">
+                <h4 class="form-section-title">关联资产</h4>
+                
+                <!-- 硬件资产：显示关联的软件 -->
+                <div id="relation-software" class="form-group">
+                    <label>关联的软件资产</label>
+                    <p class="form-hint">选择此设备运行的操作系统、数据库、中间件等</p>
+                    <div class="relation-select-wrap">
+                        <select id="software_select" class="form-control" onchange="addRelation('software')">
+                            <option value="">选择要关联的软件...</option>
+                            {% for sw in all_software %}
+                            <option value="{{ sw.id }}" data-name="{{ sw.name }}" data-type="{{ sw.type_name }}">{{ sw.name }} ({{ sw.type_name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="software_relations" class="relation-list">
+                        {% if device %}
+                            {% for sw in device_software %}
+                            <div class="relation-item" data-id="{{ sw.id }}">
+                                <span class="relation-name">{{ sw.name }}</span>
+                                <span class="relation-type">{{ sw.type_name }}</span>
+                                <input type="hidden" name="software_ids" value="{{ sw.id }}">
+                                <button type="button" class="relation-remove" onclick="removeRelation(this)">×</button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 软件资产：显示关联的硬件 -->
+                <div id="relation-hardware" class="form-group">
+                    <label>运行此软件的硬件资产</label>
+                    <p class="form-hint">选择安装此软件的服务器、设备等</p>
+                    <div class="relation-select-wrap">
+                        <select id="hardware_select" class="form-control" onchange="addRelation('hardware')">
+                            <option value="">选择要关联的硬件...</option>
+                            {% for hw in all_hardware %}
+                            <option value="{{ hw.id }}" data-name="{{ hw.name }}" data-type="{{ hw.type_name }}">{{ hw.name }} ({{ hw.type_name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="hardware_relations" class="relation-list">
+                        {% if device %}
+                            {% for hw in device_hardware %}
+                            <div class="relation-item" data-id="{{ hw.id }}">
+                                <span class="relation-name">{{ hw.name }}</span>
+                                <span class="relation-type">{{ hw.type_name }}</span>
+                                <input type="hidden" name="hardware_ids" value="{{ hw.id }}">
+                                <button type="button" class="relation-remove" onclick="removeRelation(this)">×</button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 备注标签 -->
+            <div class="form-group">
+                <label>备注</label>
+                <textarea name="remark" class="form-control" rows="3" placeholder="设备备注信息...">{{ device.remark if device else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>标签</label>
+                <input type="text" name="tag" class="form-control" value="{{ device.tag if device else '' }}" placeholder="如：生产,核心,VMware (逗号分隔)">
+            </div>
+
+            <div class="btn-group mt-4">
+                <button type="submit" class="btn btn-primary">{{ '保存修改' if device else '添加设备' }}</button>
+                <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-section {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+.form-section.hidden { display: none; }
+.form-section-title {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.relation-select-wrap { margin-bottom: 12px; }
+.relation-list {
+    display: flex; flex-wrap: wrap; gap: 8px; min-height: 32px;
+}
+.relation-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 6px; font-size: 13px;
+}
+.relation-name { font-weight: 500; color: var(--text); }
+.relation-type { font-size: 11px; color: var(--text-muted); }
+.relation-remove {
+    background: none; border: none; color: var(--danger);
+    cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1;
+}
+.relation-remove:hover { color: var(--danger); }
+.form-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-style: italic;
+}
+</style>
+
+<script>
+const noRackTypes = ['UPS电源', '无线AP', 'VPN设备'];
+const noUPositionTypes = ['UPS电源', 'PDU电源', '无线AP', 'VPN设备'];
+
+function toggleFields() {
+    const select = document.getElementById('device_type_select');
+    const selectedOption = select.options[select.selectedIndex];
+    const category = selectedOption ? selectedOption.getAttribute('data-category') : '';
+    const typeName = selectedOption ? selectedOption.textContent.trim() : '';
+
+    const isHardware = category === 'hardware';
+    const isNetwork = category === 'network';
+    const isSoftware = category === 'software';
+    const isInfrastructure = category === 'infrastructure';
+    const isOffice = category === 'office';
+    const showPhysical = isHardware || isNetwork;
+
+    // 网络信息和机柜位置只对硬件和网络设备显示
+    document.getElementById('section-network').classList.toggle('hidden', !showPhysical);
+    document.getElementById('section-rack').classList.toggle('hidden', !showPhysical);
+
+    // 软件资产特有信息只对软件显示
+    document.getElementById('section-software').classList.toggle('hidden', !isSoftware);
+
+    // 资产编号对所有非软件资产显示
+    document.getElementById('section-asset-code').classList.toggle('hidden', isSoftware);
+
+    // 领用人只对办公类资产显示
+    const userNameField = document.getElementById('field-user-name');
+    if (userNameField) {
+        userNameField.style.display = isOffice ? '' : 'none';
+    }
+
+    // 基础设施和软件资产隐藏SN码
+    const serialInput = document.querySelector('input[name="serial_number"]');
+    if (serialInput) {
+        serialInput.closest('.form-group').style.display = (isSoftware || isInfrastructure) ? 'none' : '';
+    }
+
+    // 关联资产区域：硬件和软件都显示，但内容不同
+    document.getElementById('section-relations').classList.remove('hidden');
+    document.getElementById('relation-software').style.display = showPhysical ? '' : 'none';
+    document.getElementById('relation-hardware').style.display = isSoftware ? '' : 'none';
+
+    if (showPhysical) {
+        const needsRack = !noRackTypes.includes(typeName);
+        const needsUPosition = !noUPositionTypes.includes(typeName);
+
+        document.getElementById('room_select').closest('.form-group').style.display = needsRack ? '' : 'none';
+        document.getElementById('cabinet_select').closest('.form-group').style.display = needsRack ? '' : 'none';
+
+        const uPositionInput = document.querySelector('input[name="u_position"]');
+        const uHeightSelect = document.querySelector('select[name="u_height"]');
+        if (uPositionInput) uPositionInput.closest('.form-group').style.display = needsUPosition ? '' : 'none';
+        if (uHeightSelect) uHeightSelect.closest('.form-group').style.display = needsUPosition ? '' : 'none';
+    }
+}
+
+function addRelation(type) {
+    const selectId = type === 'software' ? 'software_select' : 'hardware_select';
+    const containerId = type === 'software' ? 'software_relations' : 'hardware_relations';
+    const inputName = type === 'software' ? 'software_ids' : 'hardware_ids';
+    
+    const select = document.getElementById(selectId);
+    const option = select.options[select.selectedIndex];
+    if (!option || !option.value) return;
+    
+    const id = option.value;
+    const name = option.getAttribute('data-name');
+    const type_name = option.getAttribute('data-type');
+    
+    // 检查是否已添加
+    const existing = document.querySelectorAll('#' + containerId + ' .relation-item[data-id="' + id + '"]');
+    if (existing.length > 0) { alert('该资产已关联'); return; }
+    
+    const div = document.createElement('div');
+    div.className = 'relation-item';
+    div.setAttribute('data-id', id);
+    div.innerHTML = '<span class="relation-name">' + name + '</span>' +
+                    '<span class="relation-type">' + type_name + '</span>' +
+                    '<input type="hidden" name="' + inputName + '" value="' + id + '">' +
+                    '<button type="button" class="relation-remove" onclick="removeRelation(this)">×</button>';
+    document.getElementById(containerId).appendChild(div);
+    select.value = '';
+}
+
+function removeRelation(btn) {
+    btn.closest('.relation-item').remove();
+}
+
+function filterCabinets() {
+    var roomSelect = document.getElementById('room_select');
+    var cabSelect = document.getElementById('cabinet_select');
+    var selectedRoom = roomSelect.value;
+    var options = cabSelect.options;
+    for (var i = 0; i < options.length; i++) {
+        var opt = options[i];
+        if (opt.value === '') { opt.style.display = ''; continue; }
+        if (!selectedRoom || opt.getAttribute('data-room') === selectedRoom) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+        }
+    }
+    if (cabSelect.value && cabSelect.options[cabSelect.selectedIndex].style.display === 'none') {
+        cabSelect.value = '';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    toggleFields();
+    filterCabinets();
+});
+</script>
+{% endblock %}

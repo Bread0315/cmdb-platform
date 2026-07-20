@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑机柜' if cabinet else '新增机柜' }}{% endblock %}
+{% block content %}
+
+<!-- 页面头部 -->
+<div class="cb-header">
+    <div class="cb-header-left">
+        <a href="{{ url_for('rooms.room_cabinets', rid=room.id) if room else url_for('rooms.room_list') }}" class="cb-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <div>
+            <h1>{{ '编辑机柜' if cabinet else '新增机柜' }}</h1>
+            <span class="cb-subtitle">{{ '修改机柜配置' if cabinet else '配置新机柜参数' }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- 所属机房提示 -->
+{% if room %}
+<div class="cb-room-hint">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <span>所属机房：<strong>{{ room.name }}</strong>{% if room.building %} · {{ room.building }}{% endif %}{% if room.floor %} · {{ room.floor }}{% endif %}</span>
+</div>
+{% endif %}
+
+<div class="cb-form-card">
+    <div class="cb-form-header">
+        <div class="cb-form-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </div>
+        <div>
+            <h2>机柜配置</h2>
+            <p>设置机柜的基本参数</p>
+        </div>
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="cb-form-body">
+            <!-- 基本信息 -->
+            <div class="cb-form-section">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    基本信息
+                </h3>
+                <div class="cb-form-grid">
+                    <div class="form-group cb-form-full">
+                        <label class="required">机柜名称</label>
+                        <input type="text" name="name" class="form-control" value="{{ cabinet.name if cabinet else '' }}" required placeholder="如：A01-01">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 规格配置 -->
+            <div class="cb-form-section">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                    规格配置
+                </h3>
+                <div class="cb-form-grid">
+                    <div class="form-group">
+                        <label>总 U 位</label>
+                        <input type="number" name="u_total" class="form-control" value="{{ cabinet.u_total if cabinet else 42 }}" min="1" max="100">
+                        <span class="cb-form-hint">标准机柜通常为 42U</span>
+                    </div>
+                    <div class="form-group">
+                        <label>供电规格</label>
+                        <input type="text" name="power" class="form-control" value="{{ cabinet.power if cabinet else '' }}" placeholder="如：双路 220V 32A">
+                        <span class="cb-form-hint">可选填</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 备注 -->
+            <div class="cb-form-section">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    备注信息
+                </h3>
+                <div class="cb-form-grid">
+                    <div class="form-group cb-form-full">
+                        <label>备注</label>
+                        <textarea name="remark" class="form-control" rows="3" placeholder="机柜相关备注...">{{ cabinet.remark if cabinet else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <div class="cb-form-footer">
+            <a href="{{ url_for('rooms.room_cabinets', rid=room.id) if room else url_for('rooms.room_list') }}" class="btn btn-outline">取消</a>
+            <button type="submit" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+                {{ '保存修改' if cabinet else '创建机柜' }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.cb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.cb-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.cb-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cb-back {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.cb-back:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.cb-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.cb-room-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.cb-room-hint svg {
+    color: var(--primary);
+    flex-shrink: 0;
+}
+.cb-room-hint strong {
+    color: var(--text);
+}
+
+.cb-form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    max-width: 700px;
+    overflow: hidden;
+}
+
+.cb-form-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+.cb-form-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(91,94,166,.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cb-form-icon svg {
+    width: 24px;
+    height: 24px;
+    color: var(--primary);
+}
+.cb-form-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+}
+.cb-form-header p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.cb-form-body {
+    padding: 28px;
+}
+
+.cb-form-section {
+    margin-bottom: 28px;
+}
+.cb-form-section:last-child {
+    margin-bottom: 0;
+}
+.cb-form-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.cb-form-section h3 svg {
+    color: var(--text-muted);
+}
+
+.cb-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.cb-form-full {
+    grid-column: 1 / -1;
+}
+.cb-form-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.cb-form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+@media (max-width: 600px) {
+    .cb-form-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

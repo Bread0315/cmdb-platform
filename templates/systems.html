@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}业务系统管理{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>⚡ 业务系统管理</h1>
+    <a href="{{ url_for('systems.system_add') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增系统
+    </a>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stat-cards" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">⚙️</div>
+        <div><div class="stat-value">{{ systems|length }}</div><div class="stat-label">系统总数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div><div class="stat-value">{{ systems|selectattr('status','equalto','running')|list|length }}</div><div class="stat-label">运行中</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">🔧</div>
+        <div><div class="stat-value">{{ systems|selectattr('status','equalto','maintenance')|list|length }}</div><div class="stat-label">维护中</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">⏹</div>
+        <div><div class="stat-value">{{ systems|selectattr('status','equalto','stopped')|list|length }}</div><div class="stat-label">已停止</div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        系统列表
+        <span class="text-muted" style="font-weight:400;font-size:13px;">共 {{ systems|length }} 个</span>
+    </div>
+    <div class="card-body">
+        {% if systems %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr><th>系统名称</th><th>类型</th><th>状态</th><th>部门</th><th>负责人</th><th>关联设备</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                    {% for s in systems %}
+                    <tr>
+                        <td><a href="{{ url_for('systems.system_detail', sid=s.id) }}" style="font-weight:600;">{{ s.name }}</a></td>
+                        <td>{{ s.sys_type or '-' }}</td>
+                        <td>
+                            {% if s.status == 'running' %}<span class="badge badge-success">运行中</span>
+                            {% elif s.status == 'stopped' %}<span class="badge badge-danger">已停止</span>
+                            {% elif s.status == 'maintenance' %}<span class="badge badge-warning">维护中</span>
+                            {% elif s.status == 'testing' %}<span class="badge badge-info">测试中</span>
+                            {% else %}<span class="badge badge-secondary">{{ s.status }}</span>{% endif %}
+                        </td>
+                        <td>{{ s.department or '-' }}</td>
+                        <td>{{ s.owner or '-' }}</td>
+                        <td><span class="badge badge-primary">{{ s.device_count }}</span></td>
+                        <td>
+                            <div class="btn-group">
+                                {% if current_user.role != 'viewer' %}
+                                <a href="{{ url_for('systems.system_edit', sid=s.id) }}" class="btn btn-sm btn-outline">编辑</a>
+                                <form method="POST" action="{{ url_for('systems.system_delete', sid=s.id) }}" style="display:inline;" onsubmit="return confirm('确定删除？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                </form>
+                                {% else %}
+                                <a href="{{ url_for('systems.system_detail', sid=s.id) }}" class="btn btn-sm btn-outline">查看</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>暂无业务系统</p>
+            <a href="{{ url_for('systems.system_add') }}" class="btn btn-primary mt-4">添加第一个系统</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

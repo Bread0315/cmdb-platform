@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}{{ seg.network }}/{{ seg.mask }} - IP 详情{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📍 {{ seg.network }}/{{ seg.mask }}</h1>
+    <div class="btn-group">
+        <a href="{{ url_for('ip_pools.ip_pool_detail', pid=pool.id) }}" class="btn btn-outline btn-sm">← 返回 {{ pool.name }}</a>
+    </div>
+</div>
+
+<!-- 网段信息 -->
+<div style="display:flex; gap:20px; padding:14px 16px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; margin-bottom:16px;">
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">网段</div>
+        <div style="font-size:14px; font-weight:600;"><code>{{ seg.network }}/{{ seg.mask }}</code></div>
+    </div>
+    {% if seg.vlan %}
+    <div style="flex:0.5;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">VLAN</div>
+        <div style="font-size:14px;">{{ seg.vlan }}</div>
+    </div>
+    {% endif %}
+    {% if seg.gateway %}
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">网关</div>
+        <div style="font-size:14px;">{{ seg.gateway }}</div>
+    </div>
+    {% endif %}
+    {% if seg.room_name %}
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">所属机房</div>
+        <div style="font-size:14px;">{{ seg.room_name }}</div>
+    </div>
+    {% endif %}
+    <div style="flex:0.5; text-align:right;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">使用率</div>
+        <div style="font-size:14px;">
+            <b style="color:var(--danger);">{{ stats.used }}</b>
+            <span style="color:var(--text-muted);">/</span>
+            <span>{{ stats.total }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选 + 搜索 + 批量操作 -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+    <div style="display:flex; gap:6px; align-items:center;">
+        <a href="{{ url_for('ip_pools.segment_detail', pid=pool.id, sid=seg.id) }}" class="btn btn-sm {{ 'btn-primary' if not status_filter else 'btn-outline' }}">全部 ({{ stats.total }})</a>
+        <a href="{{ url_for('ip_pools.segment_detail', pid=pool.id, sid=seg.id, status='available') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'available' else 'btn-outline' }}">可用 ({{ stats.available }})</a>
+        <a href="{{ url_for('ip_pools.segment_detail', pid=pool.id, sid=seg.id, status='used') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'used' else 'btn-outline' }}">已使用 ({{ stats.used }})</a>
+        {% if stats.gateway > 0 %}
+        <a href="{{ url_for('ip_pools.segment_detail', pid=pool.id, sid=seg.id, status='gateway') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'gateway' else 'btn-outline' }}">网关 ({{ stats.gateway }})</a>
+        {% endif %}
+        <div style="margin-left:8px; position:relative;">
+            <input type="text" id="ip-search" placeholder="搜索 IP / 设备名" style="width:180px; padding:5px 10px 5px 28px; font-size:12px; border:1px solid var(--border); border-radius:4px;" oninput="filterIPs()">
+            <svg style="position:absolute; left:8px; top:50%; transform:translateY(-50%); pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+    </div>
+    <div id="batch-bar" style="display:none; align-items:center; gap:8px;">
+        <span style="font-size:12px; color:var(--text-muted);">已选 <b id="selected-count">0</b> 个</span>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-batch-reserve" onclick="showBatchAssign()">批量分配</button>
+        <button type="button" class="btn btn-sm btn-danger" id="btn-batch-release" onclick="showBatchRelease()" style="display:none;">批量释放</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="clearSelection()">取消</button>
+    </div>
+</div>
+
+<!-- IP 列表 -->
+<div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; overflow:hidden;">
+    {% if ips %}
+    <table id="ip-table" style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:var(--bg); border-bottom:1px solid var(--border);">
+                <th style="padding:10px 14px; width:40px;">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+                </th>
+                <th style="padding:10px 14px; text-align:left; font-size:12px; font-weight:600; color:var(--text);">IP 地址</th>
+                <th style="padding:10px 14px; text-align:left; font-size:12px; font-weight:600; color:var(--text);">状态</th>
+                <th style="padding:10px 14px; text-align:left; font-size:12px; font-weight:600; color:var(--text);">使用设备</th>
+                <th style="padding:10px 14px; text-align:left; font-size:12px; font-weight:600; color:var(--text);">IP 类型</th>
+                <th style="padding:10px 14px; text-align:left; font-size:12px; font-weight:600; color:var(--text);">备注</th>
+                <th style="padding:10px 14px; text-align:right; font-size:12px; font-weight:600; color:var(--text);">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ip in ips %}
+            <tr class="ip-row" data-ip="{{ ip.ip }}" data-device="{{ ip.device_name or '' }}" style="border-bottom:1px solid var(--border); transition:background .1s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+                <td style="padding:10px 14px;">
+                    {% if ip.status in ('available', 'used') %}
+                    <input type="checkbox" class="ip-checkbox" data-status="{{ ip.status }}" value="{{ ip.ip }}" onchange="updateSelection()">
+                    {% endif %}
+                </td>
+                <td style="padding:10px 14px;"><code style="font-size:13px; font-weight:600;">{{ ip.ip }}</code></td>
+                <td style="padding:10px 14px;">
+                    {% if ip.status == 'used' %}
+                    <span class="badge badge-danger">已使用</span>
+                    {% elif ip.status == 'reserved' %}
+                    <span class="badge badge-warning">保留</span>
+                    {% elif ip.status == 'gateway' %}
+                    <span class="badge badge-primary">网关</span>
+                    {% else %}
+                    <span class="badge badge-success">可用</span>
+                    {% endif %}
+                </td>
+                <td style="padding:10px 14px;">
+                    {% if ip.device_name %}
+                    <a href="{{ url_for('devices.device_detail', did=ip.device_id) }}" style="font-weight:500; color:var(--primary); text-decoration:none;">{{ ip.device_name }}</a>
+                    {% else %}
+                    <span style="color:var(--text-muted);">-</span>
+                    {% endif %}
+                </td>
+                <td style="padding:10px 14px;">
+                    {% if ip.ip_type == 'biz' %}
+                    <span class="badge badge-primary">业务</span>
+                    {% elif ip.ip_type == 'oob' %}
+                    <span class="badge badge-info">带外</span>
+                    {% else %}
+                    <span style="color:var(--text-muted);">-</span>
+                    {% endif %}
+                </td>
+                <td style="padding:10px 14px; font-size:12px; color:var(--text-muted);">{{ ip.remark or '-' }}</td>
+                <td style="padding:10px 14px; text-align:right;">
+                    {% if ip.status == 'available' %}
+                    <form method="POST" action="{{ url_for('ip_pools.ip_reserve', pid=pool.id) }}" style="display:inline-flex; gap:4px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="ip" value="{{ ip.ip }}">
+                        <input type="text" name="remark" placeholder="备注" style="width:80px; padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:4px;">
+                        <button type="submit" class="btn btn-sm btn-outline">分配</button>
+                    </form>
+                    {% elif ip.status == 'used' %}
+                    <form method="POST" action="{{ url_for('ip_pools.ip_release', pid=pool.id) }}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="ip" value="{{ ip.ip }}">
+                        <button type="submit" class="btn btn-sm btn-outline">释放</button>
+                    </form>
+                    {% else %}
+                    <span style="color:var(--text-muted); font-size:11px;">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align:center; padding:40px; color:var(--text-muted);">
+        <p>暂无 IP 地址</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 批量分配弹窗 -->
+<div id="batch-modal-reserve" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:12px; padding:24px; width:480px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 16px; font-size:16px;">批量分配 IP</h3>
+        <form method="POST" action="{{ url_for('ip_pools.ip_batch_reserve', pid=pool.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="ips" id="batch-ips-reserve">
+            <input type="hidden" name="sid" value="{{ seg.id }}">
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">已选择的 IP</label>
+                <div id="batch-ip-list-reserve" style="max-height:120px; overflow:auto; padding:8px; background:var(--bg); border-radius:6px; font-size:12px; font-family:monospace;"></div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">IP 类型</label>
+                <select name="ip_type" class="form-control" style="width:100%;">
+                    <option value="">不指定</option>
+                    <option value="biz">业务 IP</option>
+                    <option value="oob">带外 IP</option>
+                </select>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">备注（可选）</label>
+                <input type="text" name="remark" class="form-control" placeholder="如：核心交换机集群" style="width:100%;">
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn btn-outline" onclick="hideBatchAssign()">取消</button>
+                <button type="submit" class="btn btn-primary">确认分配</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 批量释放弹窗 -->
+<div id="batch-modal-release" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:12px; padding:24px; width:480px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 16px; font-size:16px;">批量释放 IP</h3>
+        <form method="POST" action="{{ url_for('ip_pools.ip_batch_release', pid=pool.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="ips" id="batch-ips-release">
+            <input type="hidden" name="sid" value="{{ seg.id }}">
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;">确认释放以下 IP？</label>
+                <div id="batch-ip-list-release" style="max-height:150px; overflow:auto; padding:8px; background:var(--bg); border-radius:6px; font-size:12px; font-family:monospace;"></div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn btn-outline" onclick="hideBatchRelease()">取消</button>
+                <button type="submit" class="btn btn-danger">确认释放</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleSelectAll(el) {
+    document.querySelectorAll('.ip-checkbox').forEach(function(cb) {
+        if (cb.closest('tr').style.display !== 'none') cb.checked = el.checked;
+    });
+    updateSelection();
+}
+
+function updateSelection() {
+    var checked = document.querySelectorAll('.ip-checkbox:checked');
+    var count = checked.length;
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('batch-bar').style.display = count > 0 ? 'flex' : 'none';
+    document.getElementById('select-all').checked = count > 0 && count === document.querySelectorAll('.ip-checkbox:not([style*="display: none"])').length;
+
+    // 判断选中的是什么状态
+    var hasAvailable = false, hasUsed = false;
+    checked.forEach(function(cb) {
+        if (cb.dataset.status === 'available') hasAvailable = true;
+        if (cb.dataset.status === 'used') hasUsed = true;
+    });
+    document.getElementById('btn-batch-reserve').style.display = hasAvailable ? 'inline-block' : 'none';
+    document.getElementById('btn-batch-release').style.display = hasUsed ? 'inline-block' : 'none';
+}
+
+function clearSelection() {
+    document.querySelectorAll('.ip-checkbox').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('select-all').checked = false;
+    updateSelection();
+}
+
+function filterIPs() {
+    var keyword = document.getElementById('ip-search').value.toLowerCase();
+    document.querySelectorAll('.ip-row').forEach(function(row) {
+        var ip = row.dataset.ip.toLowerCase();
+        var device = row.dataset.device.toLowerCase();
+        row.style.display = (ip.indexOf(keyword) > -1 || device.indexOf(keyword) > -1) ? '' : 'none';
+    });
+}
+
+function showBatchAssign() {
+    var ips = [];
+    document.querySelectorAll('.ip-checkbox:checked').forEach(function(cb) {
+        if (cb.dataset.status === 'available') ips.push(cb.value);
+    });
+    document.getElementById('batch-ips-reserve').value = ips.join(',');
+    document.getElementById('batch-ip-list-reserve').innerHTML = ips.map(function(ip) {
+        return '<div style="padding:2px 0;">' + ip + '</div>';
+    }).join('');
+    document.getElementById('batch-modal-reserve').style.display = 'flex';
+}
+function hideBatchAssign() { document.getElementById('batch-modal-reserve').style.display = 'none'; }
+
+function showBatchRelease() {
+    var ips = [];
+    document.querySelectorAll('.ip-checkbox:checked').forEach(function(cb) {
+        if (cb.dataset.status === 'used') ips.push(cb.value);
+    });
+    document.getElementById('batch-ips-release').value = ips.join(',');
+    document.getElementById('batch-ip-list-release').innerHTML = ips.map(function(ip) {
+        return '<div style="padding:2px 0;">' + ip + '</div>';
+    }).join('');
+    document.getElementById('batch-modal-release').style.display = 'flex';
+}
+function hideBatchRelease() { document.getElementById('batch-modal-release').style.display = 'none'; }
+</script>
+{% endblock %}

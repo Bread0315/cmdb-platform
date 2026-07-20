@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}资产导入{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📥 资产批量导入</h1>
+    <div class="btn-group">
+        <a href="/api/devices/template" class="btn btn-outline">📄 下载导入模板</a>
+        <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">← 返回资产列表</a>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <!-- 上传区域 -->
+    <div class="card">
+        <div class="card-header">上传CSV文件</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('api.api_devices_import') }}" enctype="multipart/form-data" id="importForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label class="required">选择文件</label>
+                    <div style="border:2px dashed var(--border); border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer; transition:all .2s;" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <div style="font-size:40px; margin-bottom:12px;">📁</div>
+                        <div style="font-size:15px; font-weight:600; margin-bottom:4px;" id="dropText">点击或拖拽CSV文件到此处</div>
+                        <div style="font-size:13px; color:var(--text-muted);">支持 .csv 格式，编码 UTF-8</div>
+                        <input type="file" name="file" id="fileInput" accept=".csv" style="display:none;" onchange="handleFile(this)">
+                    </div>
+                    <div id="fileInfo" style="display:none; margin-top:12px; padding:10px 14px; background:rgba(46,196,182,.08); border:1px solid rgba(46,196,182,.2); border-radius:8px; font-size:13px;">
+                        <span id="fileName"></span> <span id="fileSize" class="text-muted"></span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;" id="btnImport" disabled>
+                    📤 开始导入
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 说明 -->
+    <div class="card">
+        <div class="card-header">导入说明</div>
+        <div class="card-body">
+            <div style="font-size:14px; line-height:1.8;">
+                <p style="font-weight:600; margin-bottom:12px;">📋 必填字段（3个）</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:16px;">
+                    <div><span class="badge badge-danger">必填</span> 设备名称</div>
+                    <div><span class="badge badge-danger">必填</span> 类型名称</div>
+                    <div><span class="badge badge-danger">必填</span> 生命周期状态</div>
+                </div>
+
+                <p style="font-weight:600; margin-bottom:12px;">📝 可选字段</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:16px; font-size:13px;">
+                    <div>品牌、型号、资产编号</div>
+                    <div>SN码、业务IP、带外IP</div>
+                    <div>MAC地址、U位（如 U1、U1-U4）</div>
+                    <div>设备高度（1U / 2U / 4U）</div>
+                    <div>物理位置、部门、负责人</div>
+                    <div>领用人、采购日期、保修到期</div>
+                    <div>采购价格、备注、标签（逗号分隔）</div>
+                    <div>机柜名称、机房名称</div>
+                </div>
+
+                <p style="font-weight:600; margin-bottom:12px;">💡 智能处理</p>
+                <ul style="padding-left:20px; font-size:13px; color:var(--text-muted);">
+                    <li>类型名称必须与系统中已有的设备类型完全匹配</li>
+                    <li>生命周期状态必须匹配（如：运行中、备用闲置）</li>
+                    <li>若指定了机柜但不存在，会自动创建并关联到指定机房</li>
+                    <li>设备高度默认为 1U，支持填写 1/2/4 或 1U/2U/4U</li>
+                    <li>UTF-8 编码的 CSV 文件，Excel 导出请选择"CSV UTF-8"格式</li>
+                </ul>
+
+                <div style="margin-top:16px; padding:12px; background:rgba(67,97,238,.06); border-radius:8px; border:1px solid rgba(67,97,238,.15);">
+                    <div style="font-size:13px; font-weight:600; color:var(--primary); margin-bottom:4px;">💡 建议</div>
+                    <div style="font-size:12px; color:var(--text-muted);">先下载模板，按照模板格式填写数据后上传。可先导出现有数据作为参考。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const btnImport = document.getElementById('btnImport');
+
+// 拖拽上传
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = 'rgba(67,97,238,.04)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; dropZone.style.background = ''; });
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border)';
+    dropZone.style.background = '';
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        handleFile(fileInput);
+    }
+});
+
+function handleFile(input) {
+    if (input.files.length) {
+        const file = input.files[0];
+        document.getElementById('dropText').textContent = '✅ 文件已选择';
+        document.getElementById('fileInfo').style.display = 'block';
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = `(${(file.size / 1024).toFixed(1)} KB)`;
+        btnImport.disabled = false;
+    }
+}
+</script>
+{% endblock %}

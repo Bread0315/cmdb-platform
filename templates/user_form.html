@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑用户' if user else '新增用户' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ '✏️ 编辑用户' if user else '➕ 新增用户' }}</h1>
+    <a href="{{ url_for('users.user_list') }}" class="btn btn-outline">← 返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="required">用户名</label>
+                <input type="text" name="username" class="form-control" value="{{ user.username if user else '' }}" required
+                    {{ 'readonly' if user }} placeholder="登录用户名">
+                {% if user %}<small class="text-muted">用户名不可修改</small>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label>{{ '新密码（留空则不修改）' if user else '密码' }}</label>
+                <input type="password" name="password" class="form-control"
+                    {{ '' if user else 'required' }} minlength="8" placeholder="{{ '输入新密码' if user else '密码' }}" id="pwdInput" oninput="checkPwdStrength()">
+                <div id="pwdStrength" style="margin-top:4px;font-size:12px;"></div>
+                <small class="text-muted" id="pwdHint">管理员密码8位以上，普通用户密码12位以上，含大小写+数字+特殊字符至少3种</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>真实姓名</label>
+                    <input type="text" name="real_name" class="form-control" value="{{ user.real_name if user else '' }}" placeholder="显示名称">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}" placeholder="user@example.com">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>角色</label>
+                    <select name="role" class="form-control">
+                        <option value="user" {{ 'selected' if user and user.role == 'user' }}>普通用户 — 可管理设备</option>
+                        <option value="admin" {{ 'selected' if user and user.role == 'admin' }}>管理员 — 全部权限</option>
+                        <option value="viewer" {{ 'selected' if user and user.role == 'viewer' }}>只读用户 — 仅查看</option>
+                    </select>
+                </div>
+                {% if user %}
+                <div class="form-group">
+                    <label>状态</label>
+                    <div style="padding-top:8px;">
+                        <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" name="is_active" value="1" {{ 'checked' if user.is_active }}>
+                            启用账号
+                        </label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="btn-group mt-4">
+                <button type="submit" class="btn btn-primary">{{ '保存修改' if user else '创建用户' }}</button>
+                <a href="{{ url_for('users.user_list') }}" class="btn btn-outline">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkPwdStrength() {
+    const p = document.getElementById('pwdInput').value;
+    const el = document.getElementById('pwdStrength');
+    if (!p) { el.innerHTML = ''; return; }
+    let score = 0;
+    if (p.length >= 8) score++;
+    if (p.length >= 12) score++;
+    if (/[A-Z]/.test(p)) score++;
+    if (/[a-z]/.test(p)) score++;
+    if (/[0-9]/.test(p)) score++;
+    if (/[^A-Za-z0-9]/.test(p)) score++;
+    const labels = ['极弱','弱','一般','较强','强','很强'];
+    const colors = ['#e05d6f','#e8a838','#e8a838','#2ebd8a','#2ebd8a','#5b5ea6'];
+    const idx = Math.min(score, 5);
+    el.innerHTML = `强度：<span style="color:${colors[idx]};font-weight:600;">${labels[idx]}</span>`;
+}
+</script>
+{% endblock %}

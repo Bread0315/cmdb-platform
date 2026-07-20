@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% block title %}机房管理{% endblock %}
+{% block content %}
+
+<!-- 页面头部 -->
+<div class="rm-header">
+    <div class="rm-header-left">
+        <h1>机房管理</h1>
+        <span class="rm-badge">{{ rooms|length }} 个机房</span>
+    </div>
+    {% if current_user.role != 'viewer' %}
+    <a href="{{ url_for('rooms.room_add') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增机房
+    </a>
+    {% endif %}
+</div>
+
+{% if rooms %}
+<div class="rm-grid">
+    {% for r in rooms %}
+    <div class="rm-card">
+        <!-- 顶部渐变条 -->
+        <div class="rm-card-top"></div>
+        
+        <!-- 头部 -->
+        <div class="rm-card-header">
+            <div class="rm-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div class="rm-card-title">
+                <h3>{{ r.name }}</h3>
+                <span class="rm-card-sub">{{ r.building or '未设置楼栋' }}{% if r.floor %} · {{ r.floor }}{% endif %}</span>
+            </div>
+            {% if current_user.role != 'viewer' %}
+            <div class="rm-card-actions">
+                <a href="{{ url_for('rooms.room_edit', rid=r.id) }}" class="rm-action" title="编辑">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </a>
+                {% if r.cabinet_count == 0 %}
+                <form method="POST" action="{{ url_for('rooms.room_delete', rid=r.id) }}" style="display:inline;" onsubmit="return confirm('确定删除此机房？')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="rm-action rm-action-danger" title="删除">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 信息网格 -->
+        <div class="rm-card-info">
+            <div class="rm-info-item">
+                <span class="rm-info-label">物理位置</span>
+                <span class="rm-info-value">{{ r.location or '-' }}</span>
+            </div>
+            <div class="rm-info-item">
+                <span class="rm-info-label">备注</span>
+                <span class="rm-info-value">{{ r.remark or '-' }}</span>
+            </div>
+        </div>
+
+        <!-- 统计数据 -->
+        <div class="rm-card-stats">
+            <a href="{{ url_for('rooms.room_cabinets', rid=r.id) }}" class="rm-stat">
+                <div class="rm-stat-num">{{ r.cabinet_count }}</div>
+                <div class="rm-stat-label">机柜</div>
+            </a>
+            <div class="rm-stat-divider"></div>
+            <a href="{{ url_for('devices.device_list', room=r.id) }}" class="rm-stat">
+                <div class="rm-stat-num">{{ r.device_count }}</div>
+                <div class="rm-stat-label">设备</div>
+            </a>
+        </div>
+
+        <!-- 底部操作 -->
+        <div class="rm-card-footer">
+            <a href="{{ url_for('rooms.room_cabinets', rid=r.id) }}" class="rm-btn">
+                查看机柜
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a href="{{ url_for('rooms.room_edit', rid=r.id) }}" class="rm-btn rm-btn-ghost">编辑信息</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h3>暂无机房</h3>
+        <p>开始添加第一个机房来管理您的基础设施</p>
+        {% if current_user.role != 'viewer' %}
+        <a href="{{ url_for('rooms.room_add') }}" class="btn btn-primary mt-4">添加机房</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+.rm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.rm-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.rm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.rm-badge {
+    padding: 4px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.rm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+.rm-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: var(--transition);
+    position: relative;
+}
+.rm-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+    border-color: var(--card-border-hover);
+}
+.rm-card-top {
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+}
+
+.rm-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px 20px 0;
+}
+.rm-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(91,94,166,.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.rm-card-icon svg {
+    width: 22px;
+    height: 22px;
+    color: var(--primary);
+}
+.rm-card-title {
+    flex: 1;
+    min-width: 0;
+}
+.rm-card-title h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rm-card-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.rm-card-actions {
+    display: flex;
+    gap: 4px;
+}
+.rm-action {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.rm-action:hover {
+    background: var(--bg);
+    color: var(--primary);
+}
+.rm-action-danger:hover {
+    background: rgba(224,93,111,.1);
+    color: var(--danger);
+}
+
+.rm-card-info {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.rm-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.rm-info-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 600;
+}
+.rm-info-value {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.rm-card-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 16px 20px;
+    margin: 0 20px;
+    background: var(--bg);
+    border-radius: var(--radius);
+}
+.rm-stat {
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+.rm-stat:hover .rm-stat-num {
+    color: var(--primary);
+}
+.rm-stat-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    transition: var(--transition);
+}
+.rm-stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.rm-stat-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+}
+
+.rm-card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+}
+.rm-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.rm-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.rm-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+}
+.rm-btn-ghost:hover {
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+}
+.empty-icon {
+    margin-bottom: 20px;
+    color: var(--text-muted);
+    opacity: .3;
+}
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.empty-state p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+    .rm-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

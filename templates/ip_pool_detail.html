@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ pool.name }} - IP 地址池{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🌐 {{ pool.name }}</h1>
+    <div class="btn-group">
+        {% if current_user.role != 'viewer' %}
+        <a href="{{ url_for('ip_pools.ip_pool_edit', pid=pool.id) }}" class="btn btn-outline btn-sm">✏️ 编辑</a>
+        {% endif %}
+        <a href="{{ url_for('ip_pools.ip_pool') }}" class="btn btn-outline btn-sm">← 返回列表</a>
+    </div>
+</div>
+
+<!-- 基本信息 -->
+<div style="display:flex; gap:20px; padding:14px 16px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; margin-bottom:16px;">
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">备注</div>
+        <div style="font-size:13px;">{{ pool.remark or '-' }}</div>
+    </div>
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">网段数</div>
+        <div style="font-size:13px;">{{ segments|length }} 个</div>
+    </div>
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">IP 总数</div>
+        <div style="font-size:13px;">{{ stats.total }}</div>
+    </div>
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">已使用</div>
+        <div style="font-size:13px; color:var(--danger);">{{ stats.used }}</div>
+    </div>
+    <div style="flex:1;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">可用</div>
+        <div style="font-size:13px; color:var(--success);">{{ stats.available }}</div>
+    </div>
+</div>
+
+<!-- 网段列表 -->
+<div style="display:flex; flex-direction:column; gap:8px;">
+    {% for seg in segments %}
+    {% set si = segment_ips.get(seg.id, {}) %}
+    {% set seg_used = si.get('used', 0) %}
+    {% set seg_total = si.get('total', 0) %}
+    {% set seg_pct = (seg_used / seg_total * 100) | round(1) if seg_total > 0 else 0 %}
+    <div class="seg-card">
+        <a href="{{ url_for('ip_pools.segment_detail', pid=pool.id, sid=seg.id) }}" class="seg-left" style="text-decoration:none; color:inherit;">
+            <div class="seg-network">
+                <code>{{ seg.network }}/{{ seg.mask }}</code>
+                {% if seg.vlan %}<span class="badge badge-info" style="font-size:9px;">VLAN {{ seg.vlan }}</span>{% endif %}
+                {% if seg.room_name %}<span class="badge" style="font-size:9px; background:var(--bg); border:1px solid var(--border);">{{ seg.room_name }}</span>{% endif %}
+            </div>
+            <div class="seg-meta">
+                {% if seg.gateway %}<span>网关: {{ seg.gateway }}</span>{% endif %}
+                {% if seg.remark %}<span>{{ seg.remark }}</span>{% endif %}
+            </div>
+        </a>
+        <div class="seg-right">
+            <div class="seg-stat">
+                <span>{{ seg_used }} / {{ seg_total }}</span>
+                <span style="font-size:11px; color:var(--text-muted);">{{ seg_pct }}%</span>
+            </div>
+            <div class="seg-bar">
+                <div class="seg-bar-fill" style="width:{{ seg_pct }}%;"></div>
+            </div>
+            {% if current_user.role != 'viewer' %}
+            <div class="seg-actions">
+                <a href="{{ url_for('ip_pools.segment_detail', pid=pool.id, sid=seg.id, status='available') }}" class="btn btn-sm btn-outline" title="分配IP">分配</a>
+                {% if seg_used > 0 %}
+                <button type="button" class="btn btn-sm btn-outline" style="color:var(--text-muted); border-color:var(--border); cursor:not-allowed;" title="有 {{ seg_used }} 个 IP 使用中，无法删除">删除</button>
+                {% else %}
+                <form method="POST" action="{{ url_for('ip_pools.segment_delete', pid=pool.id, sid=seg.id) }}" style="display:inline;" onsubmit="return confirm('确定删除该网段？');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-danger" title="删除网段">删除</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+            <span class="seg-arrow">→</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 添加网段 -->
+{% if current_user.role != 'viewer' %}
+<div style="margin-top:16px; padding:14px 16px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px;">
+    <div style="font-size:13px; font-weight:600; margin-bottom:10px;">添加网段</div>
+    <form method="POST" action="{{ url_for('ip_pools.segment_add', pid=pool.id) }}" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; color:var(--text-muted);">网络地址</label>
+            <input type="text" name="network" class="form-control" placeholder="192.168.1.0" required style="width:140px; padding:6px 10px; font-size:13px;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; color:var(--text-muted);">掩码</label>
+            <select name="mask" class="form-control" style="width:80px; padding:6px 10px; font-size:13px;">
+                {% for m in range(8, 31) %}
+                <option value="{{ m }}" {{ 'selected' if m == 24 }}>/{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; color:var(--text-muted);">网关</label>
+            <input type="text" name="gateway" class="form-control" placeholder="192.168.1.254" style="width:140px; padding:6px 10px; font-size:13px;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; color:var(--text-muted);">VLAN</label>
+            <input type="text" name="vlan" class="form-control" placeholder="100" style="width:80px; padding:6px 10px; font-size:13px;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; color:var(--text-muted);">所属机房</label>
+            <select name="room_id" class="form-control" style="width:140px; padding:6px 10px; font-size:13px;">
+                <option value="">不关联</option>
+                {% for r in rooms %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; color:var(--text-muted);">备注</label>
+            <input type="text" name="remark" class="form-control" placeholder="备注" style="width:120px; padding:6px 10px; font-size:13px;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="height:32px;">添加</button>
+    </form>
+</div>
+{% endif %}
+
+<style>
+.seg-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: all .15s;
+}
+.seg-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(91,94,166,.1);
+}
+.seg-left {
+    flex: 1;
+    min-width: 0;
+}
+.seg-network {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.seg-network code {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+.seg-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.seg-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    margin-left: 20px;
+}
+.seg-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    min-width: 100px;
+}
+.seg-bar {
+    width: 80px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.seg-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    border-radius: 3px;
+}
+.seg-actions {
+    display: flex;
+    gap: 4px;
+}
+.seg-arrow {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}
