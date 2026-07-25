@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}全部机柜{% endblock %}
+{% block content %}
+
+<!-- 页面头部 -->
+<div class="cb-header">
+    <div class="cb-header-left">
+        <a href="{{ url_for('rooms.room_list') }}" class="cb-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <div>
+            <h1>全部机柜</h1>
+            <span class="cb-subtitle">跨机房机柜总览</span>
+        </div>
+    </div>
+    <span class="cb-badge">{{ cabinets|length }} 个机柜</span>
+</div>
+
+{% if cabinets %}
+<div class="cb-grid">
+    {% for c in cabinets %}
+    {% set used_pct = (c.device_count / c.u_total * 100) | round(1) if c.u_total > 0 else 0 %}
+    <div class="cb-card">
+        <!-- 顶部进度条 -->
+        <div class="cb-card-bar" style="background: linear-gradient(90deg, {{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }}, {{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }}88);"></div>
+
+        <!-- 头部 -->
+        <div class="cb-card-header">
+            <div class="cb-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            </div>
+            <div class="cb-card-title">
+                <h3>{{ c.name }}</h3>
+                <span class="cb-card-room">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    {{ c.room_name or '未分配机房' }}
+                </span>
+            </div>
+        </div>
+
+        <!-- 信息 -->
+        <div class="cb-card-info">
+            <div class="cb-info-item">
+                <span class="cb-info-label">U 位</span>
+                <span class="cb-info-value">{{ c.u_total }}U</span>
+            </div>
+            <div class="cb-info-item">
+                <span class="cb-info-label">供电</span>
+                <span class="cb-info-value">{{ c.power or '-' }}</span>
+            </div>
+            <div class="cb-info-item">
+                <span class="cb-info-label">设备</span>
+                <span class="cb-info-value cb-info-highlight">{{ c.device_count }} 台</span>
+            </div>
+        </div>
+
+        <!-- 使用率 -->
+        <div class="cb-usage">
+            <div class="cb-usage-header">
+                <span>使用率</span>
+                <span class="cb-usage-num" style="color:{{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }}">{{ used_pct }}%</span>
+            </div>
+            <div class="cb-usage-bar">
+                <div class="cb-usage-fill" style="width:{{ used_pct }}%; background:{{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }};"></div>
+            </div>
+        </div>
+
+        <!-- 操作 -->
+        <div class="cb-card-footer">
+            <a href="{{ url_for('rooms.cabinet_rack', cid=c.id) }}" class="cb-btn cb-btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                机柜图
+            </a>
+            {% if current_user.role != 'viewer' %}
+            <a href="{{ url_for('rooms.cabinet_edit', cid=c.id) }}" class="cb-btn">编辑</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+        </div>
+        <h3>暂无机柜</h3>
+        <p>请先前往机房管理添加机柜</p>
+        <a href="{{ url_for('rooms.room_list') }}" class="btn btn-primary mt-4">前往机房管理</a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.cb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.cb-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.cb-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cb-back {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.cb-back:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.cb-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+.cb-badge {
+    padding: 4px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.cb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.cb-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: var(--transition);
+}
+.cb-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+.cb-card-bar {
+    height: 3px;
+}
+
+.cb-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 18px 0;
+}
+.cb-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(91,94,166,.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cb-card-icon svg {
+    width: 20px;
+    height: 20px;
+    color: var(--primary);
+}
+.cb-card-title {
+    flex: 1;
+    min-width: 0;
+}
+.cb-card-title h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+}
+.cb-card-room {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.cb-card-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 16px 18px;
+}
+.cb-info-item {
+    text-align: center;
+}
+.cb-info-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.cb-info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+.cb-info-highlight {
+    color: var(--primary);
+}
+
+.cb-usage {
+    padding: 0 18px 16px;
+}
+.cb-usage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.cb-usage-num {
+    font-weight: 700;
+}
+.cb-usage-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.cb-usage-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .6s ease;
+}
+
+.cb-card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 0 18px 18px;
+}
+.cb-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.cb-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.cb-btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.cb-btn-primary:hover {
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+}
+.empty-icon {
+    margin-bottom: 20px;
+    color: var(--text-muted);
+    opacity: .3;
+}
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.empty-state p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+    .cb-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

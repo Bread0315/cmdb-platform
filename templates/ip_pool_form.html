@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑地址池' if pool else '新建地址池' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ '✏️ 编辑地址池' if pool else '➕ 新建地址池' }}</h1>
+    <a href="{{ url_for('ip_pools.ip_pool') }}" class="btn btn-outline">← 返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="required">地址池名称</label>
+                <input type="text" name="name" class="form-control" value="{{ pool.name if pool else '' }}" placeholder="如：办公网" required>
+            </div>
+
+            <div class="form-group">
+                <label>备注</label>
+                <textarea name="remark" class="form-control" rows="2" placeholder="地址池用途说明...">{{ pool.remark if pool else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="required">网段列表</label>
+                <div id="segments-container">
+                    {% if segments %}
+                        {% for seg in segments %}
+                        <div class="segment-row">
+                            <input type="hidden" name="segment_id[]" value="{{ seg.id }}">
+                            <div class="segment-fields">
+                                <input type="text" name="segment_network[]" class="form-control" value="{{ seg.network }}" placeholder="网络地址 如 192.168.1.0" required>
+                                <select name="segment_mask[]" class="form-control">
+                                    {% for m in range(8, 31) %}
+                                    <option value="{{ m }}" {{ 'selected' if seg.mask == m }}>/{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="segment_gateway[]" class="form-control" value="{{ seg.gateway }}" placeholder="网关">
+                                <input type="text" name="segment_vlan[]" class="form-control" value="{{ seg.vlan }}" placeholder="VLAN">
+                                <select name="segment_room_id[]" class="form-control">
+                                    <option value="">不关联机房</option>
+                                    {% for r in rooms %}
+                                    <option value="{{ r.id }}" {{ 'selected' if seg.room_id == r.id }}>{{ r.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="segment_remark[]" class="form-control" value="{{ seg.remark }}" placeholder="备注">
+                                <button type="button" class="btn btn-danger btn-sm remove-segment">删除</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="segment-row">
+                            <input type="hidden" name="segment_id[]" value="">
+                            <div class="segment-fields">
+                                <input type="text" name="segment_network[]" class="form-control" placeholder="网络地址 如 192.168.1.0" required>
+                                <select name="segment_mask[]" class="form-control">
+                                    {% for m in range(8, 31) %}
+                                    <option value="{{ m }}" {{ 'selected' if m == 24 }}>/{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="segment_gateway[]" class="form-control" placeholder="网关">
+                                <input type="text" name="segment_vlan[]" class="form-control" placeholder="VLAN">
+                                <select name="segment_room_id[]" class="form-control">
+                                    <option value="">不关联机房</option>
+                                    {% for r in rooms %}
+                                    <option value="{{ r.id }}">{{ r.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="segment_remark[]" class="form-control" placeholder="备注">
+                                <button type="button" class="btn btn-danger btn-sm remove-segment">删除</button>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <button type="button" id="add-segment" class="btn btn-outline btn-sm" style="margin-top:8px">+ 添加网段</button>
+            </div>
+
+            <div style="background:var(--bg); padding:12px 16px; border-radius:8px; font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+                💡 一个地址池可以包含多个网段。系统将根据每个网段自动生成 IP 地址列表，并自动关联设备表中已使用的业务 IP 和带外 IP。
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">{{ '保存修改' if pool else '创建地址池' }}</button>
+                <a href="{{ url_for('ip_pools.ip_pool') }}" class="btn btn-outline">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.segment-row{margin-bottom:8px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)}
+.segment-fields{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.segment-fields input[name="segment_network[]"]{width:180px;flex-shrink:0}
+.segment-fields select[name="segment_mask[]"]{width:80px;flex-shrink:0}
+.segment-fields input[name="segment_gateway[]"]{width:140px;flex-shrink:0}
+.segment-fields input[name="segment_vlan[]"]{width:100px;flex-shrink:0}
+.segment-fields input[name="segment_remark[]"]{flex:1;min-width:100px}
+</style>
+
+<script>
+document.getElementById('add-segment').addEventListener('click', function() {
+    var container = document.getElementById('segments-container');
+    var roomOptions = '<option value="">不关联机房</option>';
+    {% for r in rooms %}
+    roomOptions += '<option value="{{ r.id }}">{{ r.name }}</option>';
+    {% endfor %}
+    var row = document.createElement('div');
+    row.className = 'segment-row';
+    row.innerHTML = '<input type="hidden" name="segment_id[]" value="">' +
+        '<div class="segment-fields">' +
+        '<input type="text" name="segment_network[]" class="form-control" placeholder="网络地址 如 192.168.1.0" required>' +
+        '<select name="segment_mask[]" class="form-control">' +
+        '{% for m in range(8, 31) %}<option value="{{ m }}" {{ "selected" if m == 24 }}>/{{ m }}</option>{% endfor %}' +
+        '</select>' +
+        '<input type="text" name="segment_gateway[]" class="form-control" placeholder="网关">' +
+        '<input type="text" name="segment_vlan[]" class="form-control" placeholder="VLAN">' +
+        '<select name="segment_room_id[]" class="form-control">' + roomOptions + '</select>' +
+        '<input type="text" name="segment_remark[]" class="form-control" placeholder="备注">' +
+        '<button type="button" class="btn btn-danger btn-sm remove-segment">删除</button>' +
+        '</div>';
+    container.appendChild(row);
+    bindRemove(row);
+});
+
+function bindRemove(row) {
+    row.querySelector('.remove-segment').addEventListener('click', function() {
+        var container = document.getElementById('segments-container');
+        if (container.children.length > 1) {
+            row.remove();
+        } else {
+            alert('至少保留一个网段');
+        }
+    });
+}
+
+document.querySelectorAll('.remove-segment').forEach(function(btn) {
+    bindRemove(btn.closest('.segment-row'));
+});
+</script>
+{% endblock %}

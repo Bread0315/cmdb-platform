@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}页面未找到{% endblock %}
+{% block fullpage %}
+<div class="login-wrapper">
+    <div class="login-card" style="text-align:center;">
+        <h1 style="font-size:72px;color:var(--primary);margin-bottom:8px;">404</h1>
+        <p class="subtitle">页面未找到</p>
+        <p style="color:var(--text-muted);margin-bottom:24px;">您访问的页面不存在或已被移除</p>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-primary">返回首页</a>
+    </div>
+</div>
+{% endblock %}

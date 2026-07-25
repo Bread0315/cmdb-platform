@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}系统日志{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📋 系统日志</h1>
+    <div class="btn-group">
+        <form method="POST" action="{{ url_for('logs.log_clear') }}" style="display:inline;" onsubmit="return confirm('确定清理旧日志？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="days" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+                <option value="7">7天前</option>
+                <option value="30" selected>30天前</option>
+                <option value="90">90天前</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline">🗑 清理日志</button>
+        </form>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline">← 返回仪表盘</a>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stat-cards" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div><div class="stat-value">{{ stats.total }}</div><div class="stat-label">日志总数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">📅</div>
+        <div><div class="stat-value">{{ stats.today }}</div><div class="stat-label">今日日志</div></div>
+    </div>
+    <a href="{{ url_for('logs.log_viewer', level='INFO') }}" class="stat-card" style="text-decoration:none;color:inherit;">
+        <div class="stat-icon blue">ℹ️</div>
+        <div><div class="stat-value">{{ stats.info }}</div><div class="stat-label">INFO ↗</div></div>
+    </a>
+    <a href="{{ url_for('logs.log_viewer', level='WARNING') }}" class="stat-card" style="text-decoration:none;color:inherit;">
+        <div class="stat-icon orange">⚠️</div>
+        <div><div class="stat-value">{{ stats.warning }}</div><div class="stat-label">WARNING ↗</div></div>
+    </a>
+    <a href="{{ url_for('logs.log_viewer', level='ERROR') }}" class="stat-card" style="text-decoration:none;color:inherit;">
+        <div class="stat-icon red">❌</div>
+        <div><div class="stat-value">{{ stats.error }}</div><div class="stat-label">ERROR ↗</div></div>
+    </a>
+</div>
+
+<!-- 筛选 -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body">
+        <form method="GET" class="search-bar">
+            <div class="form-group">
+                <label>日志级别</label>
+                <select name="level" class="form-control">
+                    <option value="">全部级别</option>
+                    <option value="INFO" {{ 'selected' if level_filter == 'INFO' }}>INFO</option>
+                    <option value="WARNING" {{ 'selected' if level_filter == 'WARNING' }}>WARNING</option>
+                    <option value="ERROR" {{ 'selected' if level_filter == 'ERROR' }}>ERROR</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>模块</label>
+                <select name="module" class="form-control">
+                    <option value="">全部模块</option>
+                    {% for m in modules %}
+                    <option value="{{ m.module }}" {{ 'selected' if module_filter == m.module }}>{{ m.module }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>关键词</label>
+                <input type="text" name="q" class="form-control" placeholder="搜索详情/用户/操作" value="{{ keyword }}">
+            </div>
+            <div class="form-group" style="align-self:flex-end;">
+                <button type="submit" class="btn btn-primary">筛选</button>
+                <a href="{{ url_for('logs.log_viewer') }}" class="btn btn-outline">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 日志列表 -->
+<div class="card">
+    <div class="card-header">
+        日志列表
+        <span class="text-muted" style="font-weight:400;font-size:13px;">共 {{ total }} 条</span>
+    </div>
+    <div class="card-body">
+        {% if logs %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>级别</th>
+                        <th>模块</th>
+                        <th>操作</th>
+                        <th>详情</th>
+                        <th>用户</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-muted" style="font-size:12px;white-space:nowrap;">{{ log.created_at }}</td>
+                        <td>
+                            {% if log.level == 'ERROR' %}<span class="badge badge-danger">ERROR</span>
+                            {% elif log.level == 'WARNING' %}<span class="badge badge-warning">WARNING</span>
+                            {% else %}<span class="badge badge-info">INFO</span>{% endif %}
+                        </td>
+                        <td><span class="badge badge-secondary">{{ log.module or '-' }}</span></td>
+                        <td style="font-weight:600;">{{ log.action }}</td>
+                        <td style="max-width:400px;word-break:break-all;">{{ log.detail or '-' }}</td>
+                        <td>{{ log.username or '-' }}</td>
+                        <td class="text-muted" style="font-size:12px;">{{ log.ip or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="{{ url_for('logs.log_viewer', page=page-1, level=level_filter, module=module_filter, q=keyword) }}">← 上一页</a>
+            {% endif %}
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                <span class="active">{{ p }}</span>
+                {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                <a href="{{ url_for('logs.log_viewer', page=p, level=level_filter, module=module_filter, q=keyword) }}">{{ p }}</a>
+                {% elif p == 4 or p == total_pages - 3 %}
+                <span>…</span>
+                {% endif %}
+            {% endfor %}
+            {% if page < total_pages %}
+            <a href="{{ url_for('logs.log_viewer', page=page+1, level=level_filter, module=module_filter, q=keyword) }}">下一页 →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <p>暂无日志记录</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

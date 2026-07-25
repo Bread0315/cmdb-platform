@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}用户管理{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>👥 用户管理</h1>
+    <a href="{{ url_for('users.user_add') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增用户
+    </a>
+    <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline">🔑 修改我的密码</a>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stat-cards" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">👤</div>
+        <div><div class="stat-value">{{ users|length }}</div><div class="stat-label">用户总数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div><div class="stat-value">{{ users|selectattr('is_active')|list|length }}</div><div class="stat-label">已启用</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">🛡</div>
+        <div><div class="stat-value">{{ users|selectattr('role','equalto','admin')|list|length }}</div><div class="stat-label">管理员</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">🚫</div>
+        <div><div class="stat-value">{{ users|rejectattr('is_active')|list|length }}</div><div class="stat-label">已禁用</div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        用户列表
+        <span class="text-muted" style="font-weight:400;font-size:13px;">共 {{ users|length }} 人</span>
+    </div>
+    <div class="card-body">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>真实姓名</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td style="font-weight:600;">{{ u.username }}</td>
+                        <td>{{ u.real_name or '-' }}</td>
+                        <td>{{ u.email or '-' }}</td>
+                        <td>
+                            {% if u.role == 'admin' %}
+                            <span class="badge badge-danger">管理员</span>
+                            {% elif u.role == 'user' %}
+                            <span class="badge badge-primary">普通用户</span>
+                            {% else %}
+                            <span class="badge badge-secondary">只读用户</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.is_active %}
+                            <span class="badge badge-success">启用</span>
+                            {% else %}
+                            <span class="badge badge-warning">禁用</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ u.created_at }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('users.user_edit', uid=u.id) }}" class="btn btn-sm btn-outline">编辑</a>
+                                {% if u.id != session.user_id %}
+                                <form method="POST" action="{{ url_for('users.user_delete', uid=u.id) }}" style="display:inline;" onsubmit="return confirm('确定删除用户 {{ u.username }}？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

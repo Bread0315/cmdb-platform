@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}设备类型管理{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📁 设备类型管理</h1>
+    <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline">← 返回仪表盘</a>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stat-cards" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">📁</div>
+        <div><div class="stat-value">{{ types|length }}</div><div class="stat-label">类型总数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">🖥</div>
+        <div><div class="stat-value">{{ types|sum(attribute='device_count') }}</div><div class="stat-label">关联设备</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">📦</div>
+        <div><div class="stat-value">{{ types|selectattr('device_count','equalto',0)|list|length }}</div><div class="stat-label">空类型</div></div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 2fr; gap:20px;">
+    <!-- 添加类型 -->
+    <div class="card">
+        <div class="card-header">添加新类型</div>
+        <div class="card-body">
+            <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label class="required">类型名称</label>
+                    <input type="text" name="name" class="form-control" required placeholder="如：防火墙">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">添加</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 类型列表 -->
+    <div class="card">
+        <div class="card-header">
+            已有类型
+            <span class="text-muted" style="font-weight:400;font-size:13px;">共 {{ types|length }} 种</span>
+        </div>
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>类型名称</th><th>设备数量</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for t in types %}
+                        <tr>
+                            <td>{{ t.id }}</td>
+                            <td><a href="{{ url_for('devices.device_list', type=t.id) }}" style="font-weight:600;">{{ t.name }} ↗</a></td>
+                            <td><a href="{{ url_for('devices.device_list', type=t.id) }}"><span class="badge badge-info">{{ t.device_count }}</span></a></td>
+                            <td>
+                                {% if t.device_count == 0 %}
+                                <form method="POST" action="{{ url_for('devices.device_type_delete', tid=t.id) }}" style="display:inline;" onsubmit="return confirm('确定删除？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted" style="font-size:13px;">有设备，不可删除</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
