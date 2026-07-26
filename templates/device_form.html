@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <h1>{{ '编辑设备' if device else '新增设备' }}</h1>
-    <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">← 返回列表</a>
+    <a href="{{ back_url if back_url else url_for('devices.device_list') }}" class="btn btn-outline">← 返回列表</a>
 </div>
 
 <div class="card">
@@ -125,7 +125,12 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>所属部门</label>
-                    <input type="text" name="department" class="form-control" value="{{ device.department if device else '' }}" placeholder="如：技术部">
+                    <select name="department_id" class="form-control">
+                        <option value="">请选择部门</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {{ 'selected' if device and device.department_id == dept.id }}>{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>负责人</label>
@@ -147,6 +152,32 @@
                     <label>采购价格 (元)</label>
                     <input type="number" name="purchase_price" class="form-control" step="0.01" min="0" value="{{ device.purchase_price if device else '' }}" placeholder="0.00">
                 </div>
+            </div>
+
+            <!-- 成本信息 -->
+            <div class="form-section">
+                <h4 class="form-section-title">成本与折旧</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>折旧方式</label>
+                        <select name="depreciation_method" class="form-control">
+                            <option value="straight_line" {{ 'selected' if device and device.depreciation_method == 'straight_line' }}>直线法</option>
+                            <option value="declining_balance" {{ 'selected' if device and device.depreciation_method == 'declining_balance' }}>双倍余额递减法</option>
+                            <option value="sum_of_years" {{ 'selected' if device and device.depreciation_method == 'sum_of_years' }}>年数总和法</option>
+                            <option value="none" {{ 'selected' if device and device.depreciation_method == 'none' }}>不折旧</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>残值率 (%)</label>
+                        <input type="number" name="residual_rate" class="form-control" step="0.1" min="0" max="100" value="{{ device.residual_rate if device and device.residual_rate is not none else 5 }}" placeholder="5">
+                    </div>
+                    <div class="form-group">
+                        <label>预计使用年限 (月)</label>
+                        <input type="number" name="useful_life" class="form-control" min="1" value="{{ device.useful_life if device and device.useful_life is not none else 60 }}" placeholder="60" readonly>
+                        <span class="form-hint">统一按5年（60个月）分摊</span>
+                    </div>
+                </div>
+            </div>
             </div>
 
             <!-- 软件资产特有信息 -->
@@ -231,8 +262,9 @@
 
             <div class="btn-group mt-4">
                 <button type="submit" class="btn btn-primary">{{ '保存修改' if device else '添加设备' }}</button>
-                <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">取消</a>
+                <a href="{{ back_url if back_url else url_for('devices.device_list') }}" class="btn btn-outline">取消</a>
             </div>
+            <input type="hidden" name="back" value="{{ back_url if back_url else '' }}">
         </form>
     </div>
 </div>

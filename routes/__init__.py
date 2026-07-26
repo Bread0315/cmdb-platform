@@ -11,6 +11,9 @@ from routes.ip_pools import ip_pools_bp
 from routes.api import api_bp
 from routes.topology import topology_bp
 from routes.logs import logs_bp
+from routes.departments import departments_bp
+from routes.settings import settings_bp
+from routes.alerts import alerts_bp
 
 
 def register_routes(app):
@@ -25,3 +28,6 @@ def register_routes(app):
     app.register_blueprint(api_bp)
     app.register_blueprint(topology_bp)
     app.register_blueprint(logs_bp)
+    app.register_blueprint(departments_bp)
+    app.register_blueprint(settings_bp)
+    app.register_blueprint(alerts_bp)

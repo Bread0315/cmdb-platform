@@ -242,6 +242,19 @@ def _init_sqlite_default_data():
         ip          TEXT    DEFAULT '',
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS departments (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT    NOT NULL UNIQUE,
+        code        TEXT    DEFAULT '',
+        parent_id   INTEGER REFERENCES departments(id),
+        manager     TEXT    DEFAULT '',
+        cost_center TEXT    DEFAULT '',
+        budget      REAL    DEFAULT 0,
+        remark      TEXT    DEFAULT '',
+        is_active   INTEGER NOT NULL DEFAULT 1,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+        updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+    );
     """)
 
     # 兼容升级
@@ -257,6 +270,16 @@ def _init_sqlite_default_data():
         ("devices", "room_id", "INTEGER REFERENCES rooms(id) ON DELETE SET NULL"),
         ("rooms", "location", "TEXT DEFAULT ''"),
         ("devices", "rack_date", "TEXT DEFAULT ''"),
+        ("rooms", "temperature", "REAL DEFAULT NULL"),
+        ("rooms", "humidity", "REAL DEFAULT NULL"),
+        ("rooms", "total_power", "REAL DEFAULT NULL"),
+        ("rooms", "used_power", "REAL DEFAULT NULL"),
+        ("rooms", "cooling_type", "TEXT DEFAULT ''"),
+        ("cabinets", "status", "TEXT DEFAULT 'idle'"),
+        ("devices", "department_id", "INTEGER REFERENCES departments(id) ON DELETE SET NULL"),
+        ("devices", "depreciation_method", "TEXT DEFAULT 'straight_line'"),
+        ("devices", "residual_rate", "REAL DEFAULT 5"),
+        ("devices", "useful_life", "INTEGER DEFAULT 60"),
     ]
     for table, column, col_def in migrations:
         try:
@@ -298,6 +321,20 @@ def _init_sqlite_default_data():
     states = [("运行中", 1), ("已下架", 2), ("已报废", 3)]
     for name, sort in states:
         cur.execute("INSERT OR IGNORE INTO lifecycle_states(name, sort) VALUES(?, ?)", (name, sort))
+
+    # 默认部门
+    cur.execute("SELECT COUNT(*) FROM departments")
+    if cur.fetchone()[0] == 0:
+        departments = [
+            ("信息技术部", "IT", None, "", "IT001", 1000000),
+            ("研发部", "RD", None, "", "RD001", 2000000),
+            ("市场部", "MKT", None, "", "MKT001", 500000),
+            ("财务部", "FIN", None, "", "FIN001", 300000),
+            ("人力资源部", "HR", None, "", "HR001", 200000),
+        ]
+        for name, code, parent_id, manager, cost_center, budget in departments:
+            cur.execute("INSERT OR IGNORE INTO departments(name, code, parent_id, manager, cost_center, budget) VALUES(?,?,?,?,?,?)",
+                       (name, code, parent_id, manager, cost_center, budget))
 
     cur.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
@@ -368,20 +405,38 @@ def _init_mysql_default_data():
 def _add_indexes_sqlite(db):
     """SQLite 添加索引"""
     indexes = [
+        # 设备表
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_asset_code ON devices(asset_code) WHERE asset_code != ''",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_serial_number ON devices(serial_number) WHERE serial_number != ''",
         "CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(device_type_id)",
         "CREATE INDEX IF NOT EXISTS idx_devices_state ON devices(lifecycle_state_id)",
         "CREATE INDEX IF NOT EXISTS idx_devices_cabinet ON devices(cabinet_id)",
         "CREATE INDEX IF NOT EXISTS idx_devices_ip ON devices(biz_ip)",
+        "CREATE INDEX IF NOT EXISTS idx_devices_room ON devices(room_id)",
+        # 设备操作日志
         "CREATE INDEX IF NOT EXISTS idx_device_logs_device ON device_logs(device_id)",
+        "CREATE INDEX IF NOT EXISTS idx_device_logs_time ON device_logs(device_id, created_at)",
+        # 登录日志
         "CREATE INDEX IF NOT EXISTS idx_login_logs_user ON login_logs(username, success)",
+        "CREATE INDEX IF NOT EXISTS idx_login_logs_time ON login_logs(username, success, created_at)",
+        # IP地址
         "CREATE INDEX IF NOT EXISTS idx_ip_addresses_pool ON ip_addresses(pool_id)",
         "CREATE INDEX IF NOT EXISTS idx_ip_addresses_status ON ip_addresses(status)",
+        "CREATE INDEX IF NOT EXISTS idx_ip_addresses_device ON ip_addresses(device_id)",
+        "CREATE INDEX IF NOT EXISTS idx_ip_addr_pool_status ON ip_addresses(pool_id, status)",
+        # IP池网段
+        "CREATE INDEX IF NOT EXISTS idx_segments_room ON ip_pool_segments(room_id)",
+        "CREATE INDEX IF NOT EXISTS idx_segments_pool ON ip_pool_segments(pool_id)",
+        # CI关系
+        "CREATE INDEX IF NOT EXISTS idx_ci_source ON ci_relationships(source_id, source_type)",
+        "CREATE INDEX IF NOT EXISTS idx_ci_target ON ci_relationships(target_id, target_type)",
+        # 系统设备关联
         "CREATE INDEX IF NOT EXISTS idx_system_device_system ON system_device_rel(system_id)",
         "CREATE INDEX IF NOT EXISTS idx_system_device_device ON system_device_rel(device_id)",
+        # 系统日志
         "CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level)",
         "CREATE INDEX IF NOT EXISTS idx_system_logs_created ON system_logs(created_at)",
+        # 机柜
         "CREATE INDEX IF NOT EXISTS idx_cabinets_room ON cabinets(room_id)",
     ]
     for sql in indexes:

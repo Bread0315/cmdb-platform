@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}告警中心{% endblock %}
+{% block content %}
+
+<div class="rm-header">
+    <div class="rm-header-left">
+        <h1>告警中心</h1>
+        <span class="rm-badge rm-badge-danger">{{ danger_count }} 个严重</span>
+        <span class="rm-badge rm-badge-warning">{{ warning_count }} 个警告</span>
+    </div>
+</div>
+
+{% if alerts %}
+<div class="alerts-list">
+    {% for alert in alerts %}
+    <div class="alert-item alert-{{ alert.type }}">
+        <div class="alert-icon">{{ alert.icon }}</div>
+        <div class="alert-content">
+            <div class="alert-title">{{ alert.title }}</div>
+            <div class="alert-message">{{ alert.message }}</div>
+        </div>
+        <div class="alert-actions">
+            {% if alert.device_id %}
+            <a href="{{ url_for('devices.device_detail', did=alert.device_id) }}" class="btn btn-sm btn-outline">查看设备</a>
+            {% elif alert.link %}
+            <a href="{{ alert.link }}" class="btn btn-sm btn-outline">查看详情</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <h3>暂无告警</h3>
+        <p>系统运行正常，没有需要处理的告警</p>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.rm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+.rm-header h1 { font-size: 26px; font-weight: 700; color: var(--text); margin: 0; }
+.rm-header-left { display: flex; align-items: center; gap: 12px; }
+.rm-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+.rm-badge-danger { background: rgba(224,93,111,.1); color: var(--danger); }
+.rm-badge-warning { background: rgba(232,168,56,.1); color: var(--warning); }
+
+.alerts-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 20px; background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: var(--radius); transition: var(--transition);
+}
+.alert-item:hover { border-color: var(--card-border-hover); box-shadow: var(--shadow-sm); }
+.alert-danger { border-left: 4px solid var(--danger); }
+.alert-warning { border-left: 4px solid var(--warning); }
+.alert-icon { font-size: 24px; flex-shrink: 0; }
+.alert-content { flex: 1; min-width: 0; }
+.alert-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.alert-message { font-size: 13px; color: var(--text-muted); }
+.alert-actions { flex-shrink: 0; }
+
+.empty-state { text-align: center; padding: 60px 24px; }
+.empty-icon { margin-bottom: 20px; color: var(--text-muted); opacity: .3; }
+.empty-state h3 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.empty-state p { font-size: 14px; color: var(--text-muted); }
+</style>
+{% endblock %}

@@ -5,7 +5,7 @@
     <h1>⚡ {{ system.name }}</h1>
     <div class="btn-group">
         {% if current_user.role != 'viewer' %}
-        <a href="{{ url_for('systems.system_edit', sid=system.id) }}" class="btn btn-primary">编辑</a>
+        <a href="{{ url_for('systems.system_edit', sid=system.id, back=request.url) }}" class="btn btn-primary">编辑</a>
         {% endif %}
         <a href="{{ url_for('systems.system_list') }}" class="btn btn-outline">← 返回列表</a>
     </div>

@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% block title %}部门管理{% endblock %}
+{% block content %}
+
+<div class="rm-header">
+    <div class="rm-header-left">
+        <h1>部门管理</h1>
+        <span class="rm-badge">{{ departments|length }} 个部门</span>
+    </div>
+    {% if current_user.role != 'viewer' %}
+    <a href="{{ url_for('departments.department_add') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增部门
+    </a>
+    {% endif %}
+</div>
+
+{% if departments %}
+<div class="rm-grid">
+    {% for d in departments %}
+    <div class="rm-card">
+        <!-- 顶部渐变条 -->
+        <div class="rm-card-top" style="background:linear-gradient(90deg, var(--primary), var(--info));"></div>
+
+        <!-- 头部 -->
+        <div class="rm-card-header">
+            <div class="rm-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="rm-card-title">
+                <h3>{{ d.name }}</h3>
+                <span class="rm-card-sub">
+                    {% if d.code %}编码：{{ d.code }}{% endif %}
+                    {% if d.parent_name %} · 上级：{{ d.parent_name }}{% endif %}
+                    {% if d.manager %} · 负责人：{{ d.manager }}{% endif %}
+                </span>
+            </div>
+            {% if current_user.role != 'viewer' %}
+            <div class="rm-card-actions">
+                <a href="{{ url_for('departments.department_edit', did=d.id) }}" class="rm-action" title="编辑">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </a>
+                <form method="POST" action="{{ url_for('departments.department_delete', did=d.id) }}" style="display:inline;" onsubmit="return confirm('确定删除此部门？')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="rm-action rm-action-danger" title="删除">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 信息网格 -->
+        <div class="rm-card-info">
+            <div class="rm-info-item">
+                <span class="rm-info-label">成本中心</span>
+                <span class="rm-info-value">{{ d.cost_center or '-' }}</span>
+            </div>
+            <div class="rm-info-item">
+                <span class="rm-info-label">预算额度</span>
+                <span class="rm-info-value">{{ '{:,.0f}'.format(d.budget) if d.budget else '-' }} 元</span>
+            </div>
+        </div>
+
+        <!-- 设备类型标签 -->
+        {% if dept_device_types[d.id] %}
+        <div class="rm-env">
+            {% for t in dept_device_types[d.id] %}
+            <div class="rm-env-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+                <span class="rm-env-label">{{ t.name }}</span>
+                <span class="rm-env-value">{{ t.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- 设备状态分布 -->
+        <div class="rm-card-stats">
+            <a href="{{ url_for('devices.device_list', dept=d.id) }}" class="rm-stat">
+                <div class="rm-stat-num">{{ d.device_count }}</div>
+                <div class="rm-stat-label">设备总数</div>
+            </a>
+            <div class="rm-stat-divider"></div>
+            <div class="rm-stat">
+                <div class="rm-stat-num" style="color:var(--success);">{{ d.active_device_count }}</div>
+                <div class="rm-stat-label">运行中</div>
+            </div>
+            <div class="rm-stat-divider"></div>
+            <div class="rm-stat">
+                <div class="rm-stat-num" style="color:var(--warning);">{{ d.idle_device_count }}</div>
+                <div class="rm-stat-label">已下架/报废</div>
+            </div>
+        </div>
+
+        <!-- 资产价值 -->
+        <div class="rm-card-stats" style="margin-top:8px;">
+            <div class="rm-stat">
+                <div class="rm-stat-num rm-stat-value">{{ '{:.1f}'.format(d.total_value / 10000) if d.total_value >= 10000 else '{:,.0f}'.format(d.total_value) }}{% if d.total_value >= 10000 %}万{% endif %}</div>
+                <div class="rm-stat-label">资产总值</div>
+            </div>
+            <div class="rm-stat-divider"></div>
+            <div class="rm-stat">
+                <div class="rm-stat-num" style="font-size:16px; color:var(--success);">{{ '{:.1f}'.format(d.active_value / 10000) if d.active_value >= 10000 else '{:,.0f}'.format(d.active_value) }}{% if d.active_value >= 10000 %}万{% endif %}</div>
+                <div class="rm-stat-label">在用价值</div>
+            </div>
+            <div class="rm-stat-divider"></div>
+            <div class="rm-stat">
+                <div class="rm-stat-num" style="font-size:16px; color:var(--danger);">{{ '{:.1f}'.format(d.idle_value / 10000) if d.idle_value >= 10000 else '{:,.0f}'.format(d.idle_value) }}{% if d.idle_value >= 10000 %}万{% endif %}</div>
+                <div class="rm-stat-label">闲置价值</div>
+            </div>
+        </div>
+
+        <!-- 预算使用率 -->
+        {% if d.budget > 0 %}
+        <div class="rm-metrics">
+            <div class="rm-metric">
+                <div class="rm-metric-header">
+                    <span class="rm-metric-label">预算使用率</span>
+                    <span class="rm-metric-value">{{ '{:.1f}'.format(d.active_value / d.budget * 100) if d.budget > 0 else 0 }}%</span>
+                </div>
+                <div class="rm-metric-bar">
+                    {% set budget_pct = (d.active_value / d.budget * 100) if d.budget > 0 else 0 %}
+                    <div class="rm-metric-bar-fill" style="width:{{ budget_pct }}%; background:{{ 'var(--danger)' if budget_pct > 90 else 'var(--warning)' if budget_pct > 70 else 'var(--success)' }};"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 底部操作 -->
+        <div class="rm-card-footer">
+            <a href="{{ url_for('departments.department_devices', did=d.id) }}" class="rm-btn">
+                查看设备
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a href="{{ url_for('departments.department_edit', did=d.id) }}" class="rm-btn rm-btn-ghost">编辑信息</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>暂无部门</h3>
+        <p>开始添加第一个部门来管理组织架构</p>
+        {% if current_user.role != 'viewer' %}
+        <a href="{{ url_for('departments.department_add') }}" class="btn btn-primary mt-4">添加部门</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+.rm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.rm-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.rm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.rm-badge {
+    padding: 4px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.rm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+.rm-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: var(--transition);
+    position: relative;
+}
+.rm-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+    border-color: var(--card-border-hover);
+}
+.rm-card-top {
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+}
+
+.rm-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px 20px 0;
+}
+.rm-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(91,94,166,.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.rm-card-icon svg {
+    width: 22px;
+    height: 22px;
+    color: var(--primary);
+}
+.rm-card-title {
+    flex: 1;
+    min-width: 0;
+}
+.rm-card-title h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rm-card-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.rm-card-actions {
+    display: flex;
+    gap: 4px;
+}
+.rm-action {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.rm-action:hover {
+    background: var(--bg);
+    color: var(--primary);
+}
+.rm-action-danger:hover {
+    background: rgba(224,93,111,.1);
+    color: var(--danger);
+}
+
+.rm-card-info {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.rm-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.rm-info-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 600;
+}
+.rm-info-value {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* 使用率指标 */
+.rm-metrics {
+    padding: 0 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.rm-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.rm-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.rm-metric-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.rm-metric-value {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', Consolas, monospace;
+}
+.rm-metric-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.rm-metric-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .3s;
+}
+
+.rm-card-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 14px 20px;
+    margin: 0 20px;
+    background: var(--bg);
+    border-radius: var(--radius);
+}
+.rm-stat-value {
+    font-size: 16px !important;
+    color: var(--primary) !important;
+}
+.rm-stat {
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+.rm-stat:hover .rm-stat-num {
+    color: var(--primary);
+}
+.rm-stat-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    transition: var(--transition);
+}
+.rm-stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.rm-stat-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+}
+
+.rm-card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+}
+.rm-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.rm-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.rm-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+}
+.rm-btn-ghost:hover {
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+}
+.empty-icon {
+    margin-bottom: 20px;
+    color: var(--text-muted);
+    opacity: .3;
+}
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.empty-state p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* 环境指标 / 设备类型标签 */
+.rm-env {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 20px 12px;
+}
+.rm-env-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--bg);
+    border-radius: 6px;
+    font-size: 11px;
+}
+.rm-env-item svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.rm-env-label {
+    color: var(--text-muted);
+}
+.rm-env-value {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', Consolas, monospace;
+}
+
+@media (max-width: 600px) {
+    .rm-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

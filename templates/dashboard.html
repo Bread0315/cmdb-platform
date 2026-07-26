@@ -19,14 +19,14 @@
 
     <!-- 指标卡片 -->
     <div class="db-cards">
-        <a href="{{ url_for('devices.device_list') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#5b5ea6,#7a7dc9)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="22" x2="18" y2="22"/></svg></span><div><b>{{ stats.total_devices }}</b><small>资产总数</small></div></a>
-        <a href="{{ url_for('devices.device_list', cat='hardware') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#5b5ea6,#8b8fc7)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></span><div><b>{{ stats.cat_hardware }}</b><small>硬件资产</small></div></a>
-        <a href="{{ url_for('devices.device_list', cat='network') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#2ebd8a,#5edba5)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span><div><b>{{ stats.cat_network }}</b><small>网络设备</small></div></a>
-        <a href="{{ url_for('devices.device_list', cat='infrastructure') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#e8a838,#f0c060)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><div><b>{{ stats.cat_infrastructure }}</b><small>基础设施</small></div></a>
-        <a href="{{ url_for('devices.device_list', cat='software') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#9b8ec4,#b5aad6)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span><div><b>{{ stats.cat_software }}</b><small>软件资产</small></div></a>
-        <a href="{{ url_for('devices.device_list', cat='office') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#6fb5a0,#8fc9b8)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><div><b>{{ stats.cat_office }}</b><small>办公资产</small></div></a>
-        <a href="{{ url_for('rooms.room_list') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#5b9bd5,#7fb5e3)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><div><b>{{ stats.total_rooms }}</b><small>机房</small></div></a>
-        <a href="{{ url_for('devices.device_list', warranty='soon') }}" class="db-card"><span class="db-card-icon" style="background:linear-gradient(135deg,#e05d6f,#ea808f)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span><div><b>{{ stats.warranty_alert }}</b><small>保修预警</small></div></a>
+        <a href="{{ url_for('devices.device_list') }}" class="db-card"><span class="db-card-icon db-icon-primary"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="22" x2="18" y2="22"/></svg></span><div><b>{{ stats.total_devices }}</b><small>资产总数</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='hardware') }}" class="db-card"><span class="db-card-icon db-icon-primary"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></span><div><b>{{ stats.cat_hardware }}</b><small>硬件资产</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='network') }}" class="db-card"><span class="db-card-icon db-icon-success"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span><div><b>{{ stats.cat_network }}</b><small>网络设备</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='infrastructure') }}" class="db-card"><span class="db-card-icon db-icon-warning"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><div><b>{{ stats.cat_infrastructure }}</b><small>基础设施</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='software') }}" class="db-card"><span class="db-card-icon db-icon-accent3"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span><div><b>{{ stats.cat_software }}</b><small>软件资产</small></div></a>
+        <a href="{{ url_for('devices.device_list', cat='office') }}" class="db-card"><span class="db-card-icon db-icon-accent4"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><div><b>{{ stats.cat_office }}</b><small>办公资产</small></div></a>
+        <a href="{{ url_for('rooms.room_list') }}" class="db-card"><span class="db-card-icon db-icon-info"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><div><b>{{ stats.total_rooms }}</b><small>机房</small></div></a>
+        <a href="{{ url_for('devices.device_list', warranty='soon') }}" class="db-card"><span class="db-card-icon db-icon-danger"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span><div><b>{{ stats.warranty_alert }}</b><small>保修预警</small></div></a>
     </div>
 
     <!-- 第一行：趋势图 + 机房统计 -->
@@ -160,6 +160,56 @@
             </div>
         </div>
     </div>
+
+    <!-- 第四行：部门成本统计 -->
+    {% if stats.dept_stats %}
+    <div class="db-row-21">
+        <div class="db-panel" style="grid-column: span 2;">
+            <div class="db-panel-h">
+                <h3>部门成本统计</h3>
+                <a href="{{ url_for('departments.department_list') }}">查看全部 →</a>
+            </div>
+            <div class="db-panel-b">
+                <div class="db-dept-grid">
+                    {% for dept in stats.dept_stats %}
+                    <div class="db-dept-card">
+                        <div class="db-dept-header">
+                            <span class="db-dept-name">{{ dept.name }}</span>
+                            <span class="db-dept-count">{{ dept.device_count }} 台设备</span>
+                        </div>
+                        <div class="db-dept-values">
+                            <div class="db-dept-value">
+                                <span class="db-dept-label">资产总值</span>
+                                <span class="db-dept-num">¥{{ '{:,.0f}'.format(dept.total_value) if dept.total_value >= 10000 else '{:,.0f}'.format(dept.total_value) }}{% if dept.total_value >= 10000 %}万{% endif %}</span>
+                            </div>
+                            <div class="db-dept-value">
+                                <span class="db-dept-label">在用价值</span>
+                                <span class="db-dept-num" style="color:var(--success);">¥{{ '{:,.0f}'.format(dept.active_value) if dept.active_value >= 10000 else '{:,.0f}'.format(dept.active_value) }}{% if dept.active_value >= 10000 %}万{% endif %}</span>
+                            </div>
+                        </div>
+                        {% if dept.budget > 0 %}
+                        {% set budget_pct = (dept.active_value / dept.budget * 100) if dept.budget > 0 else 0 %}
+                        <div class="db-dept-budget">
+                            <div class="db-dept-budget-header">
+                                <span>预算 ¥{{ '{:,.0f}'.format(dept.budget) }}</span>
+                                <span>{{ '{:.1f}'.format(budget_pct) }}%</span>
+                            </div>
+                            <div class="db-dept-budget-bar">
+                                <div class="db-dept-budget-fill" style="width:{{ budget_pct }}%;background:{{ 'var(--danger)' if budget_pct > 90 else 'var(--warning)' if budget_pct > 70 else 'var(--success)' }};"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="db-panel">
+            <div class="db-panel-h"><h3>部门资产分布</h3></div>
+            <div class="db-panel-b" style="display:flex;align-items:center;justify-content:center"><canvas id="deptChart"></canvas></div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -170,11 +220,21 @@ setInterval(function(){document.getElementById('clock').textContent=new Date().t
 Chart.defaults.animation=false;
 Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
-var c=['#5b5ea6','#2ebd8a','#5b9bd5','#9b8ec4','#e8a838','#e05d6f','#6fb5a0','#7ea8be'];
-new Chart(document.getElementById('chart1'),{type:'doughnut',data:{labels:{{ cat_chart_stats|map(attribute='name')|list|tojson }},datasets:[{data:{{ cat_chart_stats|map(attribute='cnt')|list|tojson }},backgroundColor:c,borderWidth:2,borderColor:'#fff'}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:10,usePointStyle:true,pointStyle:'circle'}}}}});
+// 从CSS变量读取颜色
+function getCSSVar(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim()}
+var COLORS={
+    primary:getCSSVar('--primary'),success:getCSSVar('--success'),warning:getCSSVar('--warning'),
+    danger:getCSSVar('--danger'),info:getCSSVar('--info'),
+    accent3:getCSSVar('--accent-3'),accent4:getCSSVar('--accent-4'),accent2:getCSSVar('--accent-2'),
+    text:getCSSVar('--text'),border:getCSSVar('--border')
+};
+function alpha(hex,a){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')'}
+
+var c=[COLORS.primary,COLORS.success,COLORS.info,COLORS.accent3,COLORS.warning,COLORS.danger,COLORS.accent4,COLORS.accent2];
+new Chart(document.getElementById('chart1'),{type:'doughnut',data:{labels:{{ cat_chart_stats|map(attribute='name')|list|tojson }},datasets:[{data:{{ cat_chart_stats|map(attribute='cnt')|list|tojson }},backgroundColor:c,borderWidth:2,borderColor:COLORS.text}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:10,usePointStyle:true,pointStyle:'circle'}}}}});
 
 fetch('/api/stats').then(function(r){return r.json()}).then(function(d){
-    new Chart(document.getElementById('chart2'),{type:'bar',data:{labels:d.type_stats.map(function(i){return i.name}),datasets:[{data:d.type_stats.map(function(i){return i.cnt}),backgroundColor:'rgba(91,94,166,.7)',borderRadius:4,barThickness:14}]},options:{maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'rgba(91,94,166,.06)'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:10},padding:4}}}}});
+    new Chart(document.getElementById('chart2'),{type:'bar',data:{labels:d.type_stats.map(function(i){return i.name}),datasets:[{data:d.type_stats.map(function(i){return i.cnt}),backgroundColor:alpha(COLORS.primary,.7),borderRadius:4,barThickness:14}]},options:{maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:alpha(COLORS.primary,.06)},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:10},padding:4}}}}});
 });
 
 var trendData={{ stats.trend_data|tojson }};
@@ -187,46 +247,62 @@ var trendIdleValue=trendData.map(function(i){return i.idle_value / 10000});
 new Chart(document.getElementById('trendChart'),{
     type:'line',
     data:{labels:trendLabels,datasets:[
-        {label:'运行中',data:trendRunning,borderColor:'#2ebd8a',backgroundColor:'rgba(46,189,138,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#2ebd8a',borderWidth:2},
-        {label:'已下架/报废',data:trendOffline,borderColor:'#e05d6f',backgroundColor:'rgba(224,93,111,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#e05d6f',borderWidth:2}
+        {label:'运行中',data:trendRunning,borderColor:COLORS.success,backgroundColor:alpha(COLORS.success,.08),fill:true,tension:.4,pointRadius:2,pointBackgroundColor:COLORS.success,borderWidth:2},
+        {label:'已下架/报废',data:trendOffline,borderColor:COLORS.danger,backgroundColor:alpha(COLORS.danger,.08),fill:true,tension:.4,pointRadius:2,pointBackgroundColor:COLORS.danger,borderWidth:2}
     ]},
-    options:{maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:8,usePointStyle:true,pointStyle:'circle'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(91,94,166,.06)'},ticks:{font:{size:9}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:8,usePointStyle:true,pointStyle:'circle'}}},scales:{y:{beginAtZero:true,grid:{color:alpha(COLORS.primary,.06)},ticks:{font:{size:9}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
 });
 
 new Chart(document.getElementById('valueTrendChart'),{
     type:'line',
     data:{labels:trendLabels,datasets:[
-        {label:'运行中(万)',data:trendRunningValue,borderColor:'#5b5ea6',backgroundColor:'rgba(91,94,166,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#5b5ea6',borderWidth:2},
-        {label:'已下架/报废(万)',data:trendIdleValue,borderColor:'#e8a838',backgroundColor:'rgba(232,168,56,.08)',fill:true,tension:.4,pointRadius:2,pointBackgroundColor:'#e8a838',borderWidth:2}
+        {label:'运行中(万)',data:trendRunningValue,borderColor:COLORS.primary,backgroundColor:alpha(COLORS.primary,.08),fill:true,tension:.4,pointRadius:2,pointBackgroundColor:COLORS.primary,borderWidth:2},
+        {label:'已下架/报废(万)',data:trendIdleValue,borderColor:COLORS.warning,backgroundColor:alpha(COLORS.warning,.08),fill:true,tension:.4,pointRadius:2,pointBackgroundColor:COLORS.warning,borderWidth:2}
     ]},
-    options:{maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:8,usePointStyle:true,pointStyle:'circle'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(91,94,166,.06)'},ticks:{font:{size:9},callback:function(v){return v+'万'}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:8,usePointStyle:true,pointStyle:'circle'}}},scales:{y:{beginAtZero:true,grid:{color:alpha(COLORS.primary,.06)},ticks:{font:{size:9},callback:function(v){return v+'万'}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
 });
+
+// 部门资产分布图
+var deptData={{ stats.dept_stats|tojson }};
+if(document.getElementById('deptChart') && deptData.length > 0){
+    var deptLabels=deptData.map(function(d){return d.name});
+    var deptValues=deptData.map(function(d){return d.total_value/10000});
+    var deptColors=[COLORS.primary,COLORS.success,COLORS.info,COLORS.warning,COLORS.danger,COLORS.accent3,COLORS.accent4];
+    new Chart(document.getElementById('deptChart'),{type:'bar',data:{labels:deptLabels,datasets:[{label:'资产价值(万)',data:deptValues,backgroundColor:deptColors.slice(0,deptLabels.length),borderRadius:4,barThickness:20}]},options:{maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:alpha(COLORS.primary,.06)},ticks:{font:{size:9},callback:function(v){return v+'万'}}},y:{grid:{display:false},ticks:{font:{size:10},padding:4}}}}});
+}
 </script>
 
 <style>
 .db{display:flex;flex-direction:column;gap:12px}
 
 /* 横幅 */
-.db-banner{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:linear-gradient(135deg,#1a1d35 0%,#252849 100%);border-radius:10px;color:#fff;position:relative;overflow:hidden}
-.db-banner::before{content:'';position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,rgba(91,94,166,.3) 0%,transparent 70%);pointer-events:none}
-.db-banner::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.015) 60px,rgba(255,255,255,.015) 61px);pointer-events:none}
+.db-banner{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:linear-gradient(135deg,var(--bg-secondary) 0%,var(--bg) 100%);border-radius:10px;color:var(--text);position:relative;overflow:hidden;border:1px solid var(--card-border)}
+.db-banner::before{content:'';position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,var(--primary-glow) 0%,transparent 70%);pointer-events:none}
+.db-banner::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(128,128,128,.015) 60px,rgba(128,128,128,.015) 61px);pointer-events:none}
 .db-banner-l{position:relative;z-index:1}
 .db-banner-l h1{font-size:20px;font-weight:700;margin:0 0 3px;letter-spacing:-.5px}
-.db-banner-l p{font-size:11px;color:rgba(255,255,255,.5);margin:0}
+.db-banner-l p{font-size:11px;color:var(--text-muted);margin:0}
 .db-banner-r{display:flex;gap:32px;position:relative;z-index:1}
 .db-banner-item{text-align:center}
 .db-banner-item b{display:block;font-size:26px;font-weight:800;letter-spacing:-1px}
-.db-banner-item span{font-size:10px;color:rgba(255,255,255,.5)}
-.c-green{color:#2ebd8a}
-.c-orange{color:#e8a838}
-.db-banner-time{font-size:11px;color:rgba(255,255,255,.4);font-family:monospace;position:relative;z-index:1}
+.db-banner-item span{font-size:10px;color:var(--text-muted)}
+.c-green{color:var(--success)}
+.c-orange{color:var(--warning)}
+.db-banner-time{font-size:11px;color:var(--text-muted);font-family:monospace;position:relative;z-index:1}
 
 /* 卡片 */
 .db-cards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
 .db-card{display:flex;align-items:center;gap:8px;padding:10px 8px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;text-decoration:none;color:inherit;transition:all .2s}
-.db-card:hover{box-shadow:0 4px 16px rgba(91,94,166,.12);transform:translateY(-1px)}
+.db-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
 .db-card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .db-card-icon svg{width:16px;height:16px}
+.db-icon-primary{background:linear-gradient(135deg,var(--primary),var(--primary-light))}
+.db-icon-success{background:linear-gradient(135deg,var(--success),var(--success-glow))}
+.db-icon-warning{background:linear-gradient(135deg,var(--warning),var(--warning-glow))}
+.db-icon-danger{background:linear-gradient(135deg,var(--danger),var(--danger-glow))}
+.db-icon-info{background:linear-gradient(135deg,var(--info),var(--info-glow))}
+.db-icon-accent3{background:linear-gradient(135deg,var(--accent-3),var(--primary-light))}
+.db-icon-accent4{background:linear-gradient(135deg,var(--accent-4),var(--success))}
 .db-card div b{display:block;font-size:18px;font-weight:800;color:var(--text);line-height:1.2}
 .db-card div small{font-size:11px;color:var(--text-muted)}
 
@@ -269,8 +345,8 @@ new Chart(document.getElementById('valueTrendChart'),{
 .db-rv-cat{width:48px;font-size:11px;color:var(--text-secondary);text-align:right;flex-shrink:0}
 .db-rv-bar{flex:1;height:8px;background:var(--border);border-radius:3px;overflow:hidden;display:flex}
 .db-rv-seg{height:100%;min-width:2px;transition:width .3s}
-.db-rv-seg.running{background:linear-gradient(90deg,#5b5ea6,#8b8fc7)}
-.db-rv-seg.idle{background:linear-gradient(90deg,#e8a838,#f0c060)}
+.db-rv-seg.running{background:linear-gradient(90deg,var(--primary),var(--primary-light))}
+.db-rv-seg.idle{background:linear-gradient(90deg,var(--warning),var(--warning-glow))}
 .db-rv-val{width:65px;font-size:11px;font-weight:600;color:var(--text);text-align:right;flex-shrink:0}
 
 /* IP地址池 */
@@ -287,17 +363,32 @@ new Chart(document.getElementById('valueTrendChart'),{
 .db-ip-item-r{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;margin-left:6px}
 .db-ip-item-r span{font-size:10px;color:var(--text-muted)}
 .db-ip-bar{width:50px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.db-ip-bar-fill{height:100%;background:linear-gradient(90deg,#5b5ea6,#2ebd8a);border-radius:2px}
+.db-ip-bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:2px}
 
 /* 快捷操作 */
 .db-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .db-btn{display:flex;align-items:center;justify-content:center;padding:8px;border-radius:6px;background:var(--bg);border:1px solid var(--border);font-size:12px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all .15s}
-.db-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(91,94,166,.04)}
-.db-btn.p{background:rgba(91,94,166,.08);border-color:rgba(91,94,166,.15);color:#5b5ea6;font-weight:600}
-.db-btn.p:hover{background:rgba(91,94,166,.12)}
+.db-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-glow)}
+.db-btn.p{background:var(--primary-glow);border-color:var(--primary);color:var(--primary);font-weight:600}
+.db-btn.p:hover{background:var(--primary-glow);opacity:.8}
 
 /* 图表 */
 .db-panel-b canvas{max-width:100%}
+
+/* 部门成本统计 */
+.db-dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.db-dept-card{padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.db-dept-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.db-dept-name{font-size:13px;font-weight:600;color:var(--text)}
+.db-dept-count{font-size:11px;color:var(--text-muted)}
+.db-dept-values{display:flex;gap:16px;margin-bottom:8px}
+.db-dept-value{display:flex;flex-direction:column;gap:2px}
+.db-dept-label{font-size:10px;color:var(--text-muted)}
+.db-dept-num{font-size:14px;font-weight:700;color:var(--text)}
+.db-dept-budget{margin-top:8px}
+.db-dept-budget-header{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:4px}
+.db-dept-budget-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.db-dept-budget-fill{height:100%;border-radius:2px;transition:width .3s}
 
 /* 响应式 */
 @media(max-width:1200px){.db-cards{grid-template-columns:repeat(4,1fr)}.db-row-3,.db-row-21{grid-template-columns:1fr}.db-row-12{grid-template-columns:1fr}}

@@ -54,7 +54,7 @@
                 <span>{{ p.used_ips }} / {{ p.total_ips }}</span>
                 {% set used_pct = (p.used_ips / p.total_ips * 100) | round(1) if p.total_ips > 0 else 0 %}
                 <div class="ip-pool-bar">
-                    <div class="ip-pool-bar-fill" style="width:{{ used_pct }}%; background:{{ '#e05d6f' if used_pct > 80 else '#e8a838' if used_pct > 50 else '#2ebd8a' }};"></div>
+                    <div class="ip-pool-bar-fill" style="width:{{ used_pct }}%; background:{{ 'var(--danger)' if used_pct > 80 else 'var(--warning)' if used_pct > 50 else 'var(--success)' }};"></div>
                 </div>
                 <span style="font-size:11px; color:var(--text-muted);">{{ used_pct }}%</span>
             </div>

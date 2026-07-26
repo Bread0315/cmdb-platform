@@ -73,7 +73,17 @@
             </div>
             <div class="cab-card-title">
                 <h3>{{ c.name }}</h3>
-                <span class="cab-card-sub">{{ c.power or '供电未配置' }}</span>
+                <div class="cab-card-meta">
+                    <span class="cab-card-sub">{{ c.power or '供电未配置' }}</span>
+                    {% set cab_status = c.display_status or 'idle' %}
+                    <span class="cab-status cab-status-{{ cab_status }}">
+                        {% if cab_status == 'idle' %}空闲
+                        {% elif cab_status == 'in_use' %}使用中
+                        {% elif cab_status == 'full' %}已满
+                        {% elif cab_status == 'maintenance' %}维护中
+                        {% else %}{{ cab_status }}{% endif %}
+                    </span>
+                </div>
             </div>
             <div class="cab-card-actions">
                 <a href="{{ url_for('rooms.cabinet_edit', cid=c.id) }}" class="rm-action" title="编辑">
@@ -269,6 +279,33 @@
 .cab-card-sub {
     font-size: 12px;
     color: var(--text-muted);
+}
+.cab-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.cab-status {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.cab-status-idle {
+    background: rgba(46,189,138,.1);
+    color: var(--success);
+}
+.cab-status-in_use {
+    background: rgba(91,155,213,.1);
+    color: var(--info);
+}
+.cab-status-full {
+    background: rgba(232,168,56,.1);
+    color: var(--warning);
+}
+.cab-status-maintenance {
+    background: rgba(224,93,111,.1);
+    color: var(--danger);
 }
 
 .cab-card-actions {

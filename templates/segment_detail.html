@@ -239,6 +239,11 @@ function filterIPs() {
     });
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function showBatchAssign() {
     var ips = [];
     document.querySelectorAll('.ip-checkbox:checked').forEach(function(cb) {
@@ -246,7 +251,7 @@ function showBatchAssign() {
     });
     document.getElementById('batch-ips-reserve').value = ips.join(',');
     document.getElementById('batch-ip-list-reserve').innerHTML = ips.map(function(ip) {
-        return '<div style="padding:2px 0;">' + ip + '</div>';
+        return '<div style="padding:2px 0;">' + escapeHtml(ip) + '</div>';
     }).join('');
     document.getElementById('batch-modal-reserve').style.display = 'flex';
 }
@@ -259,7 +264,7 @@ function showBatchRelease() {
     });
     document.getElementById('batch-ips-release').value = ips.join(',');
     document.getElementById('batch-ip-list-release').innerHTML = ips.map(function(ip) {
-        return '<div style="padding:2px 0;">' + ip + '</div>';
+        return '<div style="padding:2px 0;">' + escapeHtml(ip) + '</div>';
     }).join('');
     document.getElementById('batch-modal-release').style.display = 'flex';
 }

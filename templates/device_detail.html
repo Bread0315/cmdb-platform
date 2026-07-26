@@ -5,9 +5,9 @@
     <h1>📋 {{ device.name }}</h1>
     <div class="btn-group">
         {% if current_user.role != 'viewer' %}
-        <a href="{{ url_for('devices.device_edit', did=device.id) }}" class="btn btn-primary">编辑</a>
+        <a href="{{ url_for('devices.device_edit', did=device.id, back=back_url) }}" class="btn btn-primary">编辑</a>
         {% endif %}
-        <a href="{{ url_for('devices.device_list') }}" class="btn btn-outline">← 返回列表</a>
+        <a href="{{ back_url }}" class="btn btn-outline">← 返回列表</a>
     </div>
 </div>
 
@@ -202,11 +202,11 @@
                 <div class="license-stat-label">总许可证数</div>
             </div>
             <div class="license-stat">
-                <div class="license-stat-value" style="color:#e8a838">{{ license_info.used }}</div>
+                <div class="license-stat-value" style="color:var(--warning)">{{ license_info.used }}</div>
                 <div class="license-stat-label">已使用</div>
             </div>
             <div class="license-stat">
-                <div class="license-stat-value" style="color:#2ebd8a">{{ license_info.available }}</div>
+                <div class="license-stat-value" style="color:var(--success)">{{ license_info.available }}</div>
                 <div class="license-stat-label">可用</div>
             </div>
             <div class="license-stat">
@@ -271,7 +271,7 @@
             </div>
             <div class="detail-item">
                 <div class="label">采购价格</div>
-                <div class="value">¥{{ '%.2f'|format(device.purchase_price) if device.purchase_price else '0.00' }}</div>
+                <div class="value">¥{{ '{:,.2f}'.format(device.purchase_price) if device.purchase_price else '0.00' }}</div>
             </div>
             <div class="detail-item">
                 <div class="label">创建人</div>
@@ -294,6 +294,60 @@
         {% endif %}
     </div>
 </div>
+
+<!-- 折旧信息 -->
+{% if depreciation_info %}
+<div class="card">
+    <div class="card-header">折旧信息</div>
+    <div class="card-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="label">折旧方式</div>
+                <div class="value">{{ depreciation_info.method_name }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">采购原值</div>
+                <div class="value">¥{{ '{:,.2f}'.format(depreciation_info.purchase_price) }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">分摊期限</div>
+                <div class="value">{{ depreciation_info.useful_life }} 个月（5年）</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">月折旧额</div>
+                <div class="value" style="color:var(--primary);">¥{{ '{:,.2f}'.format(depreciation_info.monthly_depreciation) }}/月</div>
+            </div>
+        </div>
+        <div style="margin-top:16px; padding:12px; background:var(--bg); border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="font-size:13px; font-weight:600;">折旧进度</span>
+                <span style="font-size:13px; color:var(--text-muted);">{{ depreciation_info.months_used }}/{{ depreciation_info.useful_life }} 个月</span>
+            </div>
+            <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden;">
+                <div style="height:100%; width:{{ depreciation_info.dep_progress }}%; background:{{ 'var(--danger)' if depreciation_info.dep_progress > 90 else 'var(--warning)' if depreciation_info.dep_progress > 70 else 'var(--success)' }}; border-radius:4px; transition:width .3s;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--text-muted);">
+                <span>已用 {{ depreciation_info.months_used }} 个月</span>
+                <span>剩余 {{ depreciation_info.remaining_months }} 个月</span>
+            </div>
+        </div>
+        <div class="detail-grid" style="margin-top:16px;">
+            <div class="detail-item">
+                <div class="label">已提折旧</div>
+                <div class="value" style="color:var(--danger);">¥{{ '{:,.2f}'.format(depreciation_info.total_depreciation) }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">当前净值</div>
+                <div class="value" style="color:var(--success); font-weight:700; font-size:18px;">¥{{ '{:,.2f}'.format(depreciation_info.current_value) }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">折旧到期</div>
+                <div class="value">{{ depreciation_info.dep_end_date }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- 关联业务系统 -->
 <div class="card">
@@ -407,6 +461,6 @@
 .license-stat-label{font-size:12px;color:var(--text-muted);margin-top:4px}
 .license-bar-wrap{margin-top:8px}
 .license-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
-.license-bar-used{height:100%;background:linear-gradient(90deg,#5b5ea6,#2ebd8a);border-radius:4px;transition:width .3s}
+.license-bar-used{height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:4px;transition:width .3s}
 </style>
 {% endblock %}

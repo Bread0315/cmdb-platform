@@ -20,6 +20,7 @@ def device_list():
     state_id = request.args.get("state", "").strip()
     cat_filter = request.args.get("cat", "").strip()
     room_filter = request.args.get("room", "").strip()
+    dept_filter = request.args.get("dept", "").strip()
     warranty_filter = request.args.get("warranty", "").strip()
 
     where, params = [], []
@@ -45,6 +46,9 @@ def device_list():
     if room_filter:
         where.append("(r1.id=? OR r2.id=?)")
         params.extend([room_filter, room_filter])
+    if dept_filter:
+        where.append("d.department_id=?")
+        params.append(dept_filter)
     if warranty_filter == 'soon':
         where.append("d.warranty_date != '' AND d.warranty_date <= date('now', '+30 days') AND d.warranty_date >= date('now')")
 
@@ -57,11 +61,12 @@ def device_list():
         LEFT JOIN cabinets c ON d.cabinet_id=c.id
         LEFT JOIN rooms r1 ON c.room_id=r1.id
         LEFT JOIN rooms r2 ON d.room_id=r2.id
+        LEFT JOIN departments dept ON d.department_id=dept.id
     """
     total = db.execute(f"SELECT COUNT(*) {base_from} {where_sql}", params).fetchone()[0]
     devices = db.execute(f"""
         SELECT d.*, d.u_height, t.name as type_name, t.category, s.name as state_name, s.sort as state_sort,
-               c.name as cabinet_name, COALESCE(r1.name, r2.name) as room_name
+               c.name as cabinet_name, COALESCE(r1.name, r2.name) as room_name, dept.name as dept_name
         {base_from}
         {where_sql}
         ORDER BY d.updated_at DESC
@@ -75,12 +80,19 @@ def device_list():
     states = db.execute("SELECT * FROM lifecycle_states WHERE name IN ('运行中', '已下架', '已报废') ORDER BY sort").fetchall()
     rooms = db.execute("SELECT * FROM rooms ORDER BY name").fetchall()
     cabinets = db.execute("SELECT * FROM cabinets ORDER BY name").fetchall()
+    departments = db.execute("SELECT id, name FROM departments WHERE is_active=1 ORDER BY name").fetchall()
+    dept_name = None
+    if dept_filter:
+        dept = db.execute("SELECT name FROM departments WHERE id=?", (dept_filter,)).fetchone()
+        if dept:
+            dept_name = dept['name']
     total_pages = max(1, (total + per_page - 1) // per_page)
 
     return render_template("devices.html", devices=devices, types=types, states=states, cabinets=cabinets, rooms=rooms,
-                           page=page, total_pages=total_pages, total=total,
+                           departments=departments, page=page, total_pages=total_pages, total=total,
                            keyword=keyword, type_id=type_id, state_id=state_id, cat_filter=cat_filter,
-                           room_filter=room_filter, warranty_filter=warranty_filter)
+                           room_filter=room_filter, dept_filter=dept_filter, dept_name=dept_name,
+                           warranty_filter=warranty_filter)
 
 
 @devices_bp.route("/devices/add", methods=["GET", "POST"])
@@ -90,16 +102,19 @@ def device_add():
     if request.method == "POST":
         data = {k: request.form.get(k, "").strip() for k in [
             "name", "brand", "model", "serial_number", "biz_ip", "oob_ip",
-            "mac_address", "u_position", "location", "department", "custodian",
+            "mac_address", "u_position", "location", "custodian",
             "rack_date", "warranty_date", "purchase_price", "remark", "tag",
-            "asset_code", "user_name"
+            "asset_code", "user_name", "depreciation_method"
         ]}
         type_id = request.form.get("device_type_id", type=int)
         state_id = request.form.get("lifecycle_state_id", type=int)
         cabinet_id = request.form.get("cabinet_id", type=int) or None
         room_id = request.form.get("room_id_single", type=int) or None
+        department_id = request.form.get("department_id", type=int) or None
         u_height = request.form.get("u_height", 1, type=int)
         quantity = request.form.get("quantity", 1, type=int)
+        residual_rate = request.form.get("residual_rate", 5, type=float)
+        useful_life = request.form.get("useful_life", 36, type=int)
         software_ids = request.form.getlist("software_ids")
         hardware_ids = request.form.getlist("hardware_ids")
         if u_height not in (1, 2, 4):
@@ -110,15 +125,16 @@ def device_add():
             try:
                 cur = db.execute("""
                     INSERT INTO devices(name, device_type_id, brand, model, serial_number,
-                        biz_ip, oob_ip, mac_address, cabinet_id, u_position, u_height, location, department, custodian,
+                        biz_ip, oob_ip, mac_address, cabinet_id, u_position, u_height, location, custodian,
                         rack_date, warranty_date, purchase_price, lifecycle_state_id, remark, tag, quantity,
-                        asset_code, user_name, room_id, created_by)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        asset_code, user_name, room_id, department_id, depreciation_method, residual_rate, useful_life, created_by)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, (data["name"], type_id, data["brand"], data["model"], data["serial_number"],
                       data["biz_ip"], data["oob_ip"], data["mac_address"], cabinet_id, data["u_position"], u_height,
-                      data["location"], data["department"], data["custodian"], data["rack_date"], data["warranty_date"],
+                      data["location"], data["custodian"], data["rack_date"], data["warranty_date"],
                       float(data["purchase_price"] or 0), state_id, data["remark"], data["tag"], quantity,
-                      data["asset_code"], data["user_name"], room_id, session["user_id"]))
+                      data["asset_code"], data["user_name"], room_id, department_id, data["depreciation_method"],
+                      residual_rate, useful_life, session["user_id"]))
                 device_id = cur.lastrowid
                 db.execute("INSERT INTO device_logs(device_id, user_id, action, detail) VALUES(?,?,?,?)",
                            (device_id, session["user_id"], "新增设备", f"新增设备: {data['name']}"))
@@ -150,10 +166,11 @@ def device_add():
     states = db.execute("SELECT * FROM lifecycle_states WHERE name IN ('运行中', '已下架', '已报废') ORDER BY sort").fetchall()
     rooms = db.execute("SELECT * FROM rooms ORDER BY name").fetchall()
     cabinets = db.execute("SELECT * FROM cabinets ORDER BY name").fetchall()
+    departments = db.execute("SELECT id, name FROM departments WHERE is_active=1 ORDER BY name").fetchall()
     all_software = db.execute("SELECT d.id, d.name, t.name as type_name FROM devices d JOIN device_types t ON d.device_type_id=t.id WHERE t.category='software' ORDER BY d.name").fetchall()
     all_hardware = db.execute("SELECT d.id, d.name, t.name as type_name FROM devices d JOIN device_types t ON d.device_type_id=t.id WHERE t.category='hardware' ORDER BY d.name").fetchall()
     return render_template("device_form.html", device=None, types=types, states=states, rooms=rooms, cabinets=cabinets,
-                          all_software=all_software, all_hardware=all_hardware, action="add")
+                          departments=departments, all_software=all_software, all_hardware=all_hardware, action="add")
 
 
 @devices_bp.route("/devices/<int:did>/edit", methods=["GET", "POST"])
@@ -163,19 +180,24 @@ def device_edit(did):
     device = db.execute("SELECT * FROM devices WHERE id=?", (did,)).fetchone()
     if not device:
         abort(404)
+    back_url = request.args.get("back", url_for("devices.device_list"))
     if request.method == "POST":
+        back_url = request.form.get("back", url_for("devices.device_list"))
         data = {k: request.form.get(k, "").strip() for k in [
             "name", "brand", "model", "serial_number", "biz_ip", "oob_ip",
-            "mac_address", "u_position", "location", "department", "custodian",
+            "mac_address", "u_position", "location", "custodian",
             "rack_date", "warranty_date", "purchase_price", "remark", "tag",
-            "asset_code", "user_name"
+            "asset_code", "user_name", "depreciation_method"
         ]}
         type_id = request.form.get("device_type_id", type=int)
         state_id = request.form.get("lifecycle_state_id", type=int)
         cabinet_id = request.form.get("cabinet_id", type=int) or None
         room_id = request.form.get("room_id_single", type=int) or None
+        department_id = request.form.get("department_id", type=int) or None
         u_height = request.form.get("u_height", 1, type=int)
         quantity = request.form.get("quantity", 1, type=int)
+        residual_rate = request.form.get("residual_rate", 5, type=float)
+        useful_life = request.form.get("useful_life", 36, type=int)
         software_ids = request.form.getlist("software_ids")
         hardware_ids = request.form.getlist("hardware_ids")
         if u_height not in (1, 2, 4):
@@ -188,16 +210,18 @@ def device_edit(did):
                 db.execute("""
                     UPDATE devices SET name=?, device_type_id=?, brand=?, model=?, serial_number=?,
                         biz_ip=?, oob_ip=?, mac_address=?, cabinet_id=?, u_position=?, u_height=?,
-                        location=?, department=?, custodian=?,
+                        location=?, custodian=?,
                         rack_date=?, warranty_date=?, purchase_price=?, lifecycle_state_id=?,
                         remark=?, tag=?, quantity=?, asset_code=?, user_name=?, room_id=?,
+                        department_id=?, depreciation_method=?, residual_rate=?, useful_life=?,
                         updated_at=datetime('now','localtime')
                     WHERE id=?
                 """, (data["name"], type_id, data["brand"], data["model"], data["serial_number"],
                       data["biz_ip"], data["oob_ip"], data["mac_address"], cabinet_id, data["u_position"], u_height,
-                      data["location"], data["department"], data["custodian"], data["rack_date"], data["warranty_date"],
+                      data["location"], data["custodian"], data["rack_date"], data["warranty_date"],
                       float(data["purchase_price"] or 0), state_id, data["remark"], data["tag"], quantity,
-                      data["asset_code"], data["user_name"], room_id, did))
+                      data["asset_code"], data["user_name"], room_id, department_id, data["depreciation_method"],
+                      residual_rate, useful_life, did))
                 if old_state != state_id:
                     old_s = db.execute("SELECT name FROM lifecycle_states WHERE id=?", (old_state,)).fetchone()
                     new_s = db.execute("SELECT name FROM lifecycle_states WHERE id=?", (state_id,)).fetchone()
@@ -244,7 +268,7 @@ def device_edit(did):
                 db.commit()
                 logger.info(f"编辑设备: {data['name']} (ID:{did}) by {session.get('username')}")
                 flash("设备更新成功", "success")
-                return redirect(url_for("devices.device_list"))
+                return redirect(back_url)
             except Exception as e:
                 db.rollback()
                 logger.error(f"编辑设备失败: {e}")
@@ -272,9 +296,10 @@ def device_edit(did):
         WHERE cr.target_id=? AND cr.source_type='device' AND cr.target_type='device'
     """, (did,)).fetchall()
     
+    departments = db.execute("SELECT id, name FROM departments WHERE is_active=1 ORDER BY name").fetchall()
     return render_template("device_form.html", device=device, types=types, states=states, rooms=rooms, cabinets=cabinets,
-                          all_software=all_software, all_hardware=all_hardware,
-                          device_software=device_software, device_hardware=device_hardware, action="edit")
+                          departments=departments, all_software=all_software, all_hardware=all_hardware,
+                          device_software=device_software, device_hardware=device_hardware, action="edit", back_url=back_url)
 
 
 @devices_bp.route("/devices/<int:did>/delete", methods=["POST"])
@@ -309,6 +334,7 @@ def device_detail(did):
     """, (did,)).fetchone()
     if not device:
         abort(404)
+    back_url = request.args.get("back", url_for("devices.device_list"))
     logs = db.execute("""
         SELECT l.*, u.username FROM device_logs l
         LEFT JOIN users u ON l.user_id=u.id
@@ -355,9 +381,96 @@ def device_detail(did):
             'usage_pct': round(used_licenses / total_licenses * 100) if total_licenses > 0 else 0
         }
 
+    # 计算折旧信息
+    depreciation_info = None
+    if device['purchase_price'] and device['purchase_price'] > 0 and device['depreciation_method'] != 'none':
+        from datetime import datetime, date
+        purchase_price = device['purchase_price']
+        useful_life = device['useful_life'] or 60  # 默认5年
+        depreciation_method = device['depreciation_method'] or 'straight_line'
+
+        # 计算已使用月数
+        start_date_str = device['rack_date'] or device['created_at'][:10]
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except:
+            start_date = date.today()
+
+        today = date.today()
+        months_used = (today.year - start_date.year) * 12 + (today.month - start_date.month)
+        months_used = max(0, months_used)
+
+        # 五年分摊，满五年残值为0
+        residual_value = 0
+        depreciable_amount = purchase_price
+        monthly_depreciation = depreciable_amount / useful_life if useful_life > 0 else 0
+
+        if depreciation_method == 'straight_line':
+            # 直线法
+            total_depreciation = min(monthly_depreciation * months_used, depreciable_amount)
+            current_value = purchase_price - total_depreciation
+        elif depreciation_method == 'declining_balance':
+            # 双倍余额递减法
+            rate = 2 / useful_life
+            remaining = purchase_price
+            total_depreciation = 0
+            for m in range(min(months_used, useful_life)):
+                month_dep = remaining * rate / 12
+                total_depreciation += month_dep
+                remaining -= month_dep
+            total_depreciation = min(total_depreciation, depreciable_amount)
+            current_value = purchase_price - total_depreciation
+        elif depreciation_method == 'sum_of_years':
+            # 年数总和法
+            years_sum = useful_life * (useful_life + 1) / 2
+            months_used_capped = min(months_used, useful_life)
+            total_depreciation = 0
+            remaining = purchase_price
+            for m in range(months_used_capped):
+                year = m // 12
+                year_remaining = useful_life - year
+                month_dep = depreciable_amount * year_remaining / years_sum / 12
+                total_depreciation += month_dep
+            total_depreciation = min(total_depreciation, depreciable_amount)
+            current_value = purchase_price - total_depreciation
+        else:
+            total_depreciation = 0
+            current_value = purchase_price
+
+        # 满五年后残值为0
+        if months_used >= useful_life:
+            current_value = 0
+            total_depreciation = purchase_price
+
+        total_depreciation = purchase_price - current_value
+        remaining_months = max(0, useful_life - months_used)
+
+        # 折旧到期日期
+        try:
+            dep_end_date = date(start_date.year + useful_life // 12, start_date.month + useful_life % 12, 1)
+        except:
+            dep_end_date = date(start_date.year + useful_life // 12 + 1, 1, 1)
+
+        depreciation_info = {
+            'method': depreciation_method,
+            'method_name': {'straight_line': '直线法', 'declining_balance': '双倍余额递减法', 'sum_of_years': '年数总和法'}.get(depreciation_method, '未知'),
+            'purchase_price': purchase_price,
+            'residual_rate': 0,
+            'residual_value': 0,
+            'depreciable_amount': round(depreciable_amount, 2),
+            'useful_life': useful_life,
+            'months_used': months_used,
+            'remaining_months': remaining_months,
+            'monthly_depreciation': round(monthly_depreciation, 2),
+            'total_depreciation': round(total_depreciation, 2),
+            'current_value': round(current_value, 2),
+            'dep_end_date': dep_end_date.strftime('%Y-%m-%d') if isinstance(dep_end_date, date) else str(dep_end_date),
+            'dep_progress': round(min(months_used, useful_life) / useful_life * 100, 1) if useful_life > 0 else 100,
+        }
+
     return render_template("device_detail.html", device=device, logs=logs, systems=systems,
                           software_assets=sw_list, hardware_assets=hw_list,
-                          license_info=license_info)
+                          license_info=license_info, depreciation_info=depreciation_info, back_url=back_url)
 
 
 @devices_bp.route("/device-types", methods=["GET", "POST"])

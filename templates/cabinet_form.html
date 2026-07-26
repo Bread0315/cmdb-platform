@@ -134,6 +134,31 @@
                         <input type="text" name="power" class="form-control" value="{{ cabinet.power if cabinet else '' }}" placeholder="如：双路 220V 32A">
                         <span class="cb-form-hint">可选填</span>
                     </div>
+                    <div class="form-group">
+                        <label>状态</label>
+                        {% if cabinet %}
+                            {% set cab_status = cabinet.status or 'idle' %}
+                            {% if cab_status == 'maintenance' %}
+                            <select name="status" class="form-control">
+                                <option value="maintenance" selected>维护中</option>
+                                <option value="">恢复正常</option>
+                            </select>
+                            <span class="cb-form-hint">设为"恢复正常"后将自动根据使用情况计算状态</span>
+                            {% else %}
+                            <select name="status" class="form-control" disabled>
+                                <option value="" selected>自动计算</option>
+                                <option value="maintenance">维护中</option>
+                            </select>
+                            <span class="cb-form-hint">状态根据设备使用情况自动计算。如需设为维护中，请先保存后再编辑</span>
+                            {% endif %}
+                        {% else %}
+                        <select name="status" class="form-control">
+                            <option value="">自动计算</option>
+                            <option value="maintenance">维护中</option>
+                        </select>
+                        <span class="cb-form-hint">默认根据设备使用情况自动计算状态</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -154,7 +179,7 @@
 
         <!-- 提交按钮 -->
         <div class="cb-form-footer">
-            <a href="{{ url_for('rooms.room_cabinets', rid=room.id) if room else url_for('rooms.room_list') }}" class="btn btn-outline">取消</a>
+            <a href="{{ url_for('rooms.room_cabinets', rid=room.id) if room else url_for('rooms.room_cabinets', rid=cabinet.room_id) }}" class="btn btn-outline">取消</a>
             <button type="submit" class="btn btn-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
                 {{ '保存修改' if cabinet else '创建机柜' }}

@@ -37,14 +37,12 @@
                 <a href="{{ url_for('rooms.room_edit', rid=r.id) }}" class="rm-action" title="编辑">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </a>
-                {% if r.cabinet_count == 0 %}
-                <form method="POST" action="{{ url_for('rooms.room_delete', rid=r.id) }}" style="display:inline;" onsubmit="return confirm('确定删除此机房？')">
+                <form method="POST" action="{{ url_for('rooms.room_delete', rid=r.id) }}" style="display:inline;" onsubmit="return confirm('确定删除此机房？{% if r.used_cabinet_count > 0 %}该机房下有 {{ r.used_cabinet_count }} 个已使用的机柜，无法删除。{% endif %}')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="rm-action rm-action-danger" title="删除">
+                    <button type="submit" class="rm-action rm-action-danger" title="{% if r.used_cabinet_count > 0 %}有机柜已使用无法删除{% else %}删除{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
                 </form>
-                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -61,6 +59,68 @@
             </div>
         </div>
 
+        <!-- 环境指标 -->
+        {% if r.temperature is not none or r.humidity is not none or r.total_power %}
+        <div class="rm-env">
+            {% if r.temperature is not none %}
+            <div class="rm-env-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                <span class="rm-env-label">温度</span>
+                <span class="rm-env-value" style="color:{{ 'var(--danger)' if r.temperature > 28 else 'var(--warning)' if r.temperature > 24 else 'var(--success)' }}">{{ r.temperature }}°C</span>
+            </div>
+            {% endif %}
+            {% if r.humidity is not none %}
+            <div class="rm-env-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                <span class="rm-env-label">湿度</span>
+                <span class="rm-env-value" style="color:{{ 'var(--danger)' if r.humidity > 70 or r.humidity < 30 else 'var(--success)' }}">{{ r.humidity }}%</span>
+            </div>
+            {% endif %}
+            {% if r.total_power %}
+            <div class="rm-env-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span class="rm-env-label">电力</span>
+                <span class="rm-env-value">{{ r.used_power or 0 }}/{{ r.total_power }}kW</span>
+            </div>
+            {% endif %}
+            {% if r.cooling_type %}
+            <div class="rm-env-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <span class="rm-env-label">制冷</span>
+                <span class="rm-env-value">{{ r.cooling_type }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- 使用率指标 -->
+        <div class="rm-metrics">
+            <!-- U位使用率 -->
+            <div class="rm-metric">
+                <div class="rm-metric-header">
+                    <span class="rm-metric-label">U位</span>
+                    <span class="rm-metric-value">{{ r.used_u }}/{{ r.total_u }}U</span>
+                </div>
+                <div class="rm-metric-bar">
+                    <div class="rm-metric-bar-fill" style="width:{{ r.u_usage_pct }}%; background:{{ 'var(--danger)' if r.u_usage_pct > 80 else 'var(--warning)' if r.u_usage_pct > 50 else 'var(--success)' }};"></div>
+                </div>
+                <span class="rm-metric-pct">{{ r.u_usage_pct }}%</span>
+            </div>
+            <!-- IP使用率 -->
+            {% if r.total_ips > 0 %}
+            <div class="rm-metric">
+                <div class="rm-metric-header">
+                    <span class="rm-metric-label">IP地址</span>
+                    <span class="rm-metric-value">{{ r.used_ips }}/{{ r.total_ips }}</span>
+                </div>
+                <div class="rm-metric-bar">
+                    <div class="rm-metric-bar-fill" style="width:{{ r.ip_usage_pct }}%; background:{{ 'var(--danger)' if r.ip_usage_pct > 80 else 'var(--warning)' if r.ip_usage_pct > 50 else 'var(--info)' }};"></div>
+                </div>
+                <span class="rm-metric-pct">{{ r.ip_usage_pct }}%</span>
+            </div>
+            {% endif %}
+        </div>
+
         <!-- 统计数据 -->
         <div class="rm-card-stats">
             <a href="{{ url_for('rooms.room_cabinets', rid=r.id) }}" class="rm-stat">
@@ -72,7 +132,21 @@
                 <div class="rm-stat-num">{{ r.device_count }}</div>
                 <div class="rm-stat-label">设备</div>
             </a>
+            <div class="rm-stat-divider"></div>
+            <div class="rm-stat">
+                <div class="rm-stat-num rm-stat-value">{{ '{:.1f}'.format(r.total_value / 10000) if r.total_value >= 10000 else r.total_value }}{% if r.total_value >= 10000 %}万{% endif %}</div>
+                <div class="rm-stat-label">资产价值</div>
+            </div>
         </div>
+
+        <!-- 设备状态分布 -->
+        {% if r.state_stats %}
+        <div class="rm-states">
+            {% for state, count in r.state_stats.items() %}
+            <span class="rm-state-tag rm-state-{{ 'running' if state == '运行中' else 'idle' if state == '已下架' else 'scrapped' }}">{{ state }}: {{ count }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <!-- 底部操作 -->
         <div class="rm-card-footer">
@@ -242,15 +316,118 @@
     color: var(--text-secondary);
 }
 
+/* 环境指标 */
+.rm-env {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 20px 12px;
+}
+.rm-env-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-radius: 8px;
+    font-size: 12px;
+}
+.rm-env-item svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.rm-env-label {
+    color: var(--text-muted);
+}
+.rm-env-value {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', Consolas, monospace;
+}
+
+/* 使用率指标 */
+.rm-metrics {
+    padding: 0 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.rm-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.rm-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.rm-metric-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.rm-metric-value {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', Consolas, monospace;
+}
+.rm-metric-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.rm-metric-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .3s;
+}
+.rm-metric-pct {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
 .rm-card-stats {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 32px;
-    padding: 16px 20px;
+    gap: 24px;
+    padding: 14px 20px;
     margin: 0 20px;
     background: var(--bg);
     border-radius: var(--radius);
+}
+.rm-stat-value {
+    font-size: 16px !important;
+    color: var(--primary) !important;
+}
+
+/* 设备状态标签 */
+.rm-states {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 20px 16px;
+}
+.rm-state-tag {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.rm-state-running {
+    background: rgba(46,189,138,.1);
+    color: var(--success);
+}
+.rm-state-idle {
+    background: rgba(232,168,56,.1);
+    color: var(--warning);
+}
+.rm-state-scrapped {
+    background: rgba(224,93,111,.1);
+    color: var(--danger);
 }
 .rm-stat {
     text-align: center;

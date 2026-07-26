@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}系统设置{% endblock %}
+{% block content %}
+
+<div class="rm-header">
+    <div class="rm-header-left">
+        <a href="{{ url_for('dashboard.dashboard') }}" class="rm-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <div>
+            <h1>系统设置</h1>
+            <span class="rm-subtitle">配置系统参数和安全策略</span>
+        </div>
+    </div>
+</div>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- 基本设置 -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <h2>基本设置</h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>系统名称</label>
+                    <span class="settings-hint">显示在登录页和侧边栏</span>
+                </div>
+                <input type="text" name="system_name" class="form-control" value="{{ settings.system_name }}" style="max-width:300px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全设置 -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h2>安全设置</h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>会话超时（分钟）</label>
+                    <span class="settings-hint">用户无操作后自动退出的时间</span>
+                </div>
+                <input type="number" name="session_timeout" class="form-control" value="{{ settings.session_timeout }}" min="5" max="1440" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>密码过期天数</label>
+                    <span class="settings-hint">密码有效期，到期后强制修改</span>
+                </div>
+                <input type="number" name="password_expiry_days" class="form-control" value="{{ settings.password_expiry_days }}" min="0" max="365" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>登录失败锁定次数</label>
+                    <span class="settings-hint">连续失败多少次后锁定账号</span>
+                </div>
+                <input type="number" name="max_login_attempts" class="form-control" value="{{ settings.max_login_attempts }}" min="1" max="20" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>锁定时长（分钟）</label>
+                    <span class="settings-hint">登录失败锁定的持续时间</span>
+                </div>
+                <input type="number" name="lockout_minutes" class="form-control" value="{{ settings.lockout_minutes }}" min="1" max="1440" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>密码最小长度</label>
+                </div>
+                <input type="number" name="password_min_length" class="form-control" value="{{ settings.password_min_length }}" min="6" max="32" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>密码复杂度要求</label>
+                </div>
+                <div class="settings-checkboxes">
+                    <label class="settings-checkbox"><input type="checkbox" name="require_uppercase" {{ 'checked' if settings.require_uppercase }}> 大写字母</label>
+                    <label class="settings-checkbox"><input type="checkbox" name="require_lowercase" {{ 'checked' if settings.require_lowercase }}> 小写字母</label>
+                    <label class="settings-checkbox"><input type="checkbox" name="require_number" {{ 'checked' if settings.require_number }}> 数字</label>
+                    <label class="settings-checkbox"><input type="checkbox" name="require_special" {{ 'checked' if settings.require_special }}> 特殊字符</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 告警设置 -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <h2>告警设置</h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>保修到期提醒（天）</label>
+                    <span class="settings-hint">保修到期前多少天开始提醒</span>
+                </div>
+                <input type="number" name="warranty_alert_days" class="form-control" value="{{ settings.warranty_alert_days }}" min="1" max="365" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>IP使用率告警阈值（%）</label>
+                    <span class="settings-hint">IP使用率超过此值时告警</span>
+                </div>
+                <input type="number" name="ip_usage_alert_threshold" class="form-control" value="{{ settings.ip_usage_alert_threshold }}" min="50" max="100" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>机柜使用率告警阈值（%）</label>
+                    <span class="settings-hint">机柜使用率超过此值时告警</span>
+                </div>
+                <input type="number" name="cabinet_usage_alert_threshold" class="form-control" value="{{ settings.cabinet_usage_alert_threshold }}" min="50" max="100" style="max-width:120px;">
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>温度告警范围（°C）</label>
+                    <span class="settings-hint">超出此范围时告警</span>
+                </div>
+                <div class="settings-range">
+                    <input type="number" name="temperature_alert_low" class="form-control" value="{{ settings.temperature_alert_low }}" min="0" max="40" style="width:80px;">
+                    <span>~</span>
+                    <input type="number" name="temperature_alert_high" class="form-control" value="{{ settings.temperature_alert_high }}" min="15" max="50" style="width:80px;">
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>湿度告警范围（%）</label>
+                    <span class="settings-hint">超出此范围时告警</span>
+                </div>
+                <div class="settings-range">
+                    <input type="number" name="humidity_alert_low" class="form-control" value="{{ settings.humidity_alert_low }}" min="0" max="50" style="width:80px;">
+                    <span>~</span>
+                    <input type="number" name="humidity_alert_high" class="form-control" value="{{ settings.humidity_alert_high }}" min="30" max="100" style="width:80px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志设置 -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <h2>日志设置</h2>
+        </div>
+        <div class="settings-card-body">
+            <div class="settings-row">
+                <div class="settings-label">
+                    <label>日志保留天数</label>
+                    <span class="settings-hint">超过此天数的日志将被清理</span>
+                </div>
+                <input type="number" name="log_retention_days" class="form-control" value="{{ settings.log_retention_days }}" min="7" max="365" style="max-width:120px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- 提交按钮 -->
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline">取消</a>
+        <button type="submit" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+            保存设置
+        </button>
+    </div>
+</form>
+
+<style>
+.settings-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+.settings-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+}
+.settings-card-header svg { color: var(--text-muted); }
+.settings-card-header h2 { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; }
+.settings-card-body { padding: 20px; }
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-label { flex: 1; }
+.settings-label label { font-size: 14px; font-weight: 500; color: var(--text); }
+.settings-hint { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.settings-checkboxes { display: flex; gap: 16px; }
+.settings-checkbox { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.settings-checkbox input { width: 16px; height: 16px; accent-color: var(--primary); }
+.settings-range { display: flex; align-items: center; gap: 8px; }
+.settings-range span { color: var(--text-muted); }
+</style>
+{% endblock %}

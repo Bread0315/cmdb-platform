@@ -86,7 +86,7 @@ def ip_pool():
     # 构建查询
     conditions = []
     params = []
-    if room_id:
+    if room_id and room_id.isdigit():
         conditions.append("p.id IN (SELECT pool_id FROM ip_pool_segments WHERE room_id=?)")
         params.append(int(room_id))
     if keyword:
@@ -193,8 +193,10 @@ def ip_pool_edit(pid):
     pool = db.execute("SELECT * FROM ip_pools WHERE id=?", (pid,)).fetchone()
     if not pool:
         abort(404)
+    back_url = request.args.get("back", url_for("ip_pools.ip_pool_detail", pid=pid))
     rooms = db.execute("SELECT id, name FROM rooms ORDER BY name").fetchall()
     if request.method == "POST":
+        back_url = request.form.get("back", url_for("ip_pools.ip_pool_detail", pid=pid))
         name = request.form.get("name", "").strip()
         remark = request.form.get("remark", "").strip()
         networks = request.form.getlist("segment_network[]")
@@ -265,10 +267,10 @@ def ip_pool_edit(pid):
             log_to_db(db, 'INFO', 'IP管理', '编辑地址池', f"编辑地址池: {name}")
             db.commit()
             flash("地址池更新成功", "success")
-            return redirect(url_for("ip_pools.ip_pool_detail", pid=pid))
+            return redirect(back_url)
 
     segments = db.execute("SELECT * FROM ip_pool_segments WHERE pool_id=? ORDER BY network", (pid,)).fetchall()
-    return render_template("ip_pool_form.html", pool=pool, segments=segments, rooms=rooms, action="edit")
+    return render_template("ip_pool_form.html", pool=pool, segments=segments, rooms=rooms, action="edit", back_url=back_url)
 
 
 @ip_pools_bp.route("/ip-pools/<int:pid>/delete", methods=["POST"])

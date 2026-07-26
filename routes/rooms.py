@@ -14,7 +14,7 @@ rooms_bp = Blueprint('rooms', __name__)
 @login_required
 def room_list():
     db = get_db()
-    rooms = db.execute("""
+    rooms_raw = db.execute("""
         SELECT r.*,
             (SELECT COUNT(*) FROM cabinets WHERE room_id=r.id) as cabinet_count,
             (SELECT COUNT(*) FROM devices d JOIN cabinets c ON d.cabinet_id=c.id
@@ -22,6 +22,73 @@ def room_list():
              WHERE c.room_id=r.id AND s.name NOT IN ('已下架','已报废')) as device_count
         FROM rooms r ORDER BY r.name
     """).fetchall()
+
+    # 转换为dict并补充详细统计数据
+    rooms = []
+    for r in rooms_raw:
+        room = dict(r)
+        rid = room['id']
+
+        # U位使用情况
+        u_stats = db.execute("""
+            SELECT COALESCE(SUM(c.u_total), 0) as total_u,
+                   COALESCE(SUM(
+                       CASE WHEN d.u_height IS NOT NULL AND d.u_position != ''
+                       THEN d.u_height ELSE 0 END
+                   ), 0) as used_u
+            FROM cabinets c
+            LEFT JOIN devices d ON d.cabinet_id = c.id AND d.u_position != ''
+            WHERE c.room_id = ?
+        """, (rid,)).fetchone()
+        room['total_u'] = u_stats['total_u']
+        room['used_u'] = u_stats['used_u']
+        room['u_usage_pct'] = round(u_stats['used_u'] / u_stats['total_u'] * 100) if u_stats['total_u'] > 0 else 0
+
+        # 已使用的机柜数量（有机柜且机柜下有设备）
+        room['used_cabinet_count'] = db.execute("""
+            SELECT COUNT(DISTINCT c.id) FROM cabinets c
+            WHERE c.room_id = ? AND EXISTS (
+                SELECT 1 FROM devices d WHERE d.cabinet_id = c.id
+            )
+        """, (rid,)).fetchone()[0]
+
+        # IP地址使用情况
+        ip_stats = db.execute("""
+            SELECT COUNT(*) as total_ips,
+                   SUM(CASE WHEN a.status = 'used' THEN 1 ELSE 0 END) as used_ips
+            FROM ip_pool_segments s
+            JOIN ip_pools p ON s.pool_id = p.id
+            LEFT JOIN ip_addresses a ON a.pool_id = p.id
+            WHERE s.room_id = ?
+        """, (rid,)).fetchone()
+        room['total_ips'] = ip_stats['total_ips'] or 0
+        room['used_ips'] = ip_stats['used_ips'] or 0
+        room['ip_usage_pct'] = round(ip_stats['used_ips'] / ip_stats['total_ips'] * 100) if ip_stats['total_ips'] > 0 else 0
+
+        # 资产价值（根据设备状态计算）
+        value_stats = db.execute("""
+            SELECT COALESCE(SUM(CASE WHEN s.name='运行中' THEN d.purchase_price ELSE 0 END), 0) as running_value,
+                   COALESCE(SUM(CASE WHEN s.name IN ('已下架','已报废') THEN d.purchase_price ELSE 0 END), 0) as idle_value
+            FROM devices d
+            JOIN cabinets c ON d.cabinet_id = c.id
+            JOIN lifecycle_states s ON d.lifecycle_state_id = s.id
+            WHERE c.room_id = ?
+        """, (rid,)).fetchone()
+        room['total_value'] = value_stats['running_value'] + value_stats['idle_value']
+
+        # 设备状态分布
+        state_stats = db.execute("""
+            SELECT s.name as state_name, COUNT(*) as cnt
+            FROM devices d
+            JOIN cabinets c ON d.cabinet_id = c.id
+            JOIN lifecycle_states s ON d.lifecycle_state_id = s.id
+            WHERE c.room_id = ?
+            GROUP BY s.name
+        """, (rid,)).fetchall()
+        room['state_stats'] = {s['state_name']: s['cnt'] for s in state_stats}
+
+        rooms.append(room)
+
     return render_template("rooms.html", rooms=rooms)
 
 
@@ -30,12 +97,18 @@ def room_list():
 def room_add():
     if request.method == "POST":
         db = get_db()
-        data = {k: request.form.get(k, "").strip() for k in ["name", "building", "floor", "location", "remark"]}
+        data = {k: request.form.get(k, "").strip() for k in ["name", "building", "floor", "location", "remark", "cooling_type"]}
+        # 处理数值字段
+        for field in ["temperature", "humidity", "total_power", "used_power"]:
+            val = request.form.get(field, "").strip()
+            data[field] = float(val) if val else None
         if not data["name"]:
             flash("机房名称为必填项", "danger")
         else:
-            db.execute("INSERT INTO rooms(name, building, floor, location, remark) VALUES(?,?,?,?,?)",
-                       (data["name"], data["building"], data["floor"], data["location"], data["remark"]))
+            db.execute("""INSERT INTO rooms(name, building, floor, location, remark, temperature, humidity, total_power, used_power, cooling_type)
+                       VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                       (data["name"], data["building"], data["floor"], data["location"], data["remark"],
+                        data["temperature"], data["humidity"], data["total_power"], data["used_power"], data["cooling_type"]))
             log_to_db(db, 'INFO', '机房管理', '新增机房', f"新增机房: {data['name']}")
             db.commit()
             logger.info(f"新增机房: {data['name']} by {session.get('username')}")
@@ -52,12 +125,17 @@ def room_edit(rid):
     if not room:
         abort(404)
     if request.method == "POST":
-        data = {k: request.form.get(k, "").strip() for k in ["name", "building", "floor", "location", "remark"]}
+        data = {k: request.form.get(k, "").strip() for k in ["name", "building", "floor", "location", "remark", "cooling_type"]}
+        for field in ["temperature", "humidity", "total_power", "used_power"]:
+            val = request.form.get(field, "").strip()
+            data[field] = float(val) if val else None
         if not data["name"]:
             flash("机房名称为必填项", "danger")
         else:
-            db.execute("UPDATE rooms SET name=?, building=?, floor=?, location=?, remark=? WHERE id=?",
-                       (data["name"], data["building"], data["floor"], data["location"], data["remark"], rid))
+            db.execute("""UPDATE rooms SET name=?, building=?, floor=?, location=?, remark=?,
+                       temperature=?, humidity=?, total_power=?, used_power=?, cooling_type=? WHERE id=?""",
+                       (data["name"], data["building"], data["floor"], data["location"], data["remark"],
+                        data["temperature"], data["humidity"], data["total_power"], data["used_power"], data["cooling_type"], rid))
             log_to_db(db, 'INFO', '机房管理', '编辑机房', f"更新机房: {data['name']}")
             db.commit()
             flash("机房信息已更新", "success")
@@ -72,10 +150,18 @@ def room_delete(rid):
     room = db.execute("SELECT name FROM rooms WHERE id=?", (rid,)).fetchone()
     if not room:
         abort(404)
-    cab_count = db.execute("SELECT COUNT(*) FROM cabinets WHERE room_id=?", (rid,)).fetchone()[0]
-    if cab_count > 0:
-        flash(f"该机房下有机柜 {cab_count} 个，请先删除机柜", "danger")
+    # 检查是否有已使用的机柜（机柜下有设备）
+    used_cab_count = db.execute("""
+        SELECT COUNT(DISTINCT c.id) FROM cabinets c
+        WHERE c.room_id = ? AND EXISTS (
+            SELECT 1 FROM devices d WHERE d.cabinet_id = c.id
+        )
+    """, (rid,)).fetchone()[0]
+    if used_cab_count > 0:
+        flash(f"该机房下有 {used_cab_count} 个已使用的机柜（含设备），请先移除设备", "danger")
         return redirect(url_for("rooms.room_list"))
+    # 删除机柜（未使用的）和机房
+    db.execute("DELETE FROM cabinets WHERE room_id=? AND NOT EXISTS (SELECT 1 FROM devices d WHERE d.cabinet_id = cabinets.id)", (rid,))
     db.execute("DELETE FROM rooms WHERE id=?", (rid,))
     log_to_db(db, 'WARNING', '机房管理', '删除机房', f"删除机房: {room['name']}")
     db.commit()
@@ -108,13 +194,31 @@ def room_cabinets(rid):
     room = db.execute("SELECT * FROM rooms WHERE id=?", (rid,)).fetchone()
     if not room:
         abort(404)
-    cabinets = db.execute("""
+    cabinets_raw = db.execute("""
         SELECT c.*,
             (SELECT COUNT(*) FROM devices d
              JOIN lifecycle_states s ON d.lifecycle_state_id=s.id
-             WHERE d.cabinet_id=c.id AND s.name NOT IN ('已下架', '已报废')) as device_count
+             WHERE d.cabinet_id=c.id AND s.name NOT IN ('已下架', '已报废')) as device_count,
+            (SELECT COALESCE(SUM(d.u_height), 0) FROM devices d
+             WHERE d.cabinet_id=c.id AND d.u_position != '') as used_u
         FROM cabinets c WHERE c.room_id=? ORDER BY c.name
     """, (rid,)).fetchall()
+
+    # 计算机柜状态
+    cabinets = []
+    for c in cabinets_raw:
+        cab = dict(c)
+        # 如果手动设置为维护中，保持维护中
+        if cab.get('status') == 'maintenance':
+            cab['display_status'] = 'maintenance'
+        elif cab['device_count'] == 0:
+            cab['display_status'] = 'idle'  # 空闲
+        elif cab['used_u'] >= cab['u_total']:
+            cab['display_status'] = 'full'  # 已满
+        else:
+            cab['display_status'] = 'in_use'  # 使用中
+        cabinets.append(cab)
+
     return render_template("room_cabinets.html", room=room, cabinets=cabinets)
 
 
@@ -135,14 +239,15 @@ def room_cabinet_add(rid):
             count = request.form.get("count", 1, type=int)
             u_total = request.form.get("u_total", 42, type=int)
             power = request.form.get("power", "").strip() or "双路市电 220V 16A"
+            status = request.form.get("status", "idle").strip() or "idle"
             remark = request.form.get("remark", "").strip()
 
             if names:
                 # 按名称列表批量添加
                 name_list = [n.strip() for n in names.split('\n') if n.strip()]
                 for name in name_list:
-                    db.execute("INSERT INTO cabinets(room_id, name, u_total, power, remark) VALUES(?,?,?,?,?)",
-                               (rid, name, u_total, power, remark))
+                    db.execute("INSERT INTO cabinets(room_id, name, u_total, power, status, remark) VALUES(?,?,?,?,?,?)",
+                               (rid, name, u_total, power, status, remark))
                     log_to_db(db, 'INFO', '机柜管理', '新增机柜', f"新增机柜: {name} (机房ID:{rid})")
                 db.commit()
                 flash(f"成功添加 {len(name_list)} 个机柜", "success")
@@ -164,8 +269,8 @@ def room_cabinet_add(rid):
                         if name in existing:
                             skipped.append(name)
                             continue
-                        db.execute("INSERT INTO cabinets(room_id, name, u_total, power, remark) VALUES(?,?,?,?,?)",
-                                   (rid, name, u_total, power, remark))
+                        db.execute("INSERT INTO cabinets(room_id, name, u_total, power, status, remark) VALUES(?,?,?,?,?,?)",
+                                   (rid, name, u_total, power, status, remark))
                         log_to_db(db, 'INFO', '机柜管理', '新增机柜', f"新增机柜: {name} (机房ID:{rid})")
                         added += 1
                     db.commit()
@@ -182,8 +287,8 @@ def room_cabinet_add(rid):
                         if name in existing:
                             skipped.append(name)
                             continue
-                        db.execute("INSERT INTO cabinets(room_id, name, u_total, power, remark) VALUES(?,?,?,?,?)",
-                                   (rid, name, u_total, power, remark))
+                        db.execute("INSERT INTO cabinets(room_id, name, u_total, power, status, remark) VALUES(?,?,?,?,?,?)",
+                                   (rid, name, u_total, power, status, remark))
                         log_to_db(db, 'INFO', '机柜管理', '新增机柜', f"新增机柜: {name} (机房ID:{rid})")
                         added += 1
                     db.commit()
@@ -199,6 +304,7 @@ def room_cabinet_add(rid):
             name = request.form.get("name", "").strip()
             u_total = request.form.get("u_total", 42, type=int)
             power = request.form.get("power", "").strip() or "双路市电 220V 16A"
+            status = request.form.get("status", "idle").strip() or "idle"
             remark = request.form.get("remark", "").strip()
             if not name:
                 flash("机柜名称为必填项", "danger")
@@ -207,8 +313,8 @@ def room_cabinet_add(rid):
                 if exists:
                     flash(f"机柜名称 '{name}' 在该机房已存在", "danger")
                 else:
-                    db.execute("INSERT INTO cabinets(room_id, name, u_total, power, remark) VALUES(?,?,?,?,?)",
-                               (rid, name, u_total, power, remark))
+                    db.execute("INSERT INTO cabinets(room_id, name, u_total, power, status, remark) VALUES(?,?,?,?,?,?)",
+                               (rid, name, u_total, power, status, remark))
                     log_to_db(db, 'INFO', '机柜管理', '新增机柜', f"新增机柜: {name} (机房ID:{rid})")
                     db.commit()
                     flash("机柜添加成功", "success")
@@ -227,12 +333,13 @@ def cabinet_edit(cid):
         name = request.form.get("name", "").strip()
         u_total = request.form.get("u_total", 42, type=int)
         power = request.form.get("power", "").strip()
+        status = request.form.get("status", "idle").strip() or "idle"
         remark = request.form.get("remark", "").strip()
         if not name:
             flash("机柜名称为必填项", "danger")
         else:
-            db.execute("UPDATE cabinets SET name=?, u_total=?, power=?, remark=? WHERE id=?",
-                       (name, u_total, power, remark, cid))
+            db.execute("UPDATE cabinets SET name=?, u_total=?, power=?, status=?, remark=? WHERE id=?",
+                       (name, u_total, power, status, remark, cid))
             log_to_db(db, 'INFO', '机柜管理', '编辑机柜', f"更新机柜: {name}")
             db.commit()
             flash("机柜信息已更新", "success")
@@ -262,14 +369,14 @@ def cabinet_rack(cid):
     cabinet = db.execute("SELECT c.*, r.name as room_name FROM cabinets c LEFT JOIN rooms r ON c.room_id=r.id WHERE c.id=?", (cid,)).fetchone()
     if not cabinet:
         abort(404)
-    # 只显示运行中的设备（有U位的，用于机柜图展示）
+    # 显示该机柜所有有U位的设备（用于机柜图展示）
     devices = db.execute("""
-        SELECT d.id, d.name, d.u_position, d.u_height, t.name as type_name, s.name as state_name,
-               d.biz_ip, d.oob_ip, d.custodian
+        SELECT d.id, d.name, d.u_position, d.u_height, t.name as type_name, t.category as device_category,
+               s.name as state_name, d.biz_ip, d.oob_ip, d.custodian
         FROM devices d
         JOIN device_types t ON d.device_type_id=t.id
         JOIN lifecycle_states s ON d.lifecycle_state_id=s.id
-        WHERE d.cabinet_id=? AND d.u_position != '' AND s.name = '运行中'
+        WHERE d.cabinet_id=? AND d.u_position != ''
         ORDER BY d.u_position
     """, (cid,)).fetchall()
 
@@ -324,11 +431,38 @@ def cabinet_rack(cid):
     # 构建已占用U位列表
     occupied_u = list(u_map.keys())
 
+    # 计算统计数据
+    total_u = cabinet['u_total']
+    used_u = len(occupied_u)
+    usage_pct = round(used_u / total_u * 100) if total_u > 0 else 0
+
+    # 按设备类别统计
+    category_stats = {}
+    for d in devices:
+        cat = d['device_category'] or 'other'
+        category_stats[cat] = category_stats.get(cat, 0) + 1
+
+    # 设备状态统计
+    state_stats = {}
+    for d in devices:
+        st = d['state_name']
+        state_stats[st] = state_stats.get(st, 0) + 1
+
+    stats = {
+        'total_u': total_u,
+        'used_u': used_u,
+        'free_u': total_u - used_u,
+        'usage_pct': usage_pct,
+        'device_count': len(devices),
+        'category_stats': category_stats,
+        'state_stats': state_stats,
+    }
+
     return render_template("cabinet_rack.html", cabinet=cabinet, devices=devices,
                            unassigned_devices=unassigned_devices, cabinet_devices=cabinet_devices,
                            u_map=u_map, gap_positions=gap_positions,
                            start_positions=start_positions, end_positions=end_positions,
-                           occupied_u=occupied_u)
+                           occupied_u=occupied_u, stats=stats)
 
 
 @rooms_bp.route("/rooms/<int:rid>/cabinets/batch-edit", methods=["POST"])

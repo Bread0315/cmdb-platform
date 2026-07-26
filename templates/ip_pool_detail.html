@@ -5,7 +5,7 @@
     <h1>🌐 {{ pool.name }}</h1>
     <div class="btn-group">
         {% if current_user.role != 'viewer' %}
-        <a href="{{ url_for('ip_pools.ip_pool_edit', pid=pool.id) }}" class="btn btn-outline btn-sm">✏️ 编辑</a>
+        <a href="{{ url_for('ip_pools.ip_pool_edit', pid=pool.id, back=request.url) }}" class="btn btn-outline btn-sm">✏️ 编辑</a>
         {% endif %}
         <a href="{{ url_for('ip_pools.ip_pool') }}" class="btn btn-outline btn-sm">← 返回列表</a>
     </div>

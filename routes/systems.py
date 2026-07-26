@@ -77,7 +77,9 @@ def system_edit(sid):
     system = db.execute("SELECT * FROM business_systems WHERE id=?", (sid,)).fetchone()
     if not system:
         abort(404)
+    back_url = request.args.get("back", url_for("systems.system_list"))
     if request.method == "POST":
+        back_url = request.form.get("back", url_for("systems.system_list"))
         data = {k: request.form.get(k, "").strip() for k in [
             "name", "sys_type", "status", "department", "owner", "developer",
             "description", "biz_domain", "tech_stack", "db_info", "middleware",
@@ -118,7 +120,7 @@ def system_edit(sid):
 
             db.commit()
             flash("业务系统信息已更新", "success")
-            return redirect(url_for("systems.system_list"))
+            return redirect(back_url)
     devices = db.execute("""
         SELECT d.id, d.name, t.name as type_name, t.category, d.biz_ip
         FROM devices d JOIN device_types t ON d.device_type_id=t.id
@@ -128,7 +130,7 @@ def system_edit(sid):
     """).fetchall()
     rels = db.execute("SELECT device_id, role FROM system_device_rel WHERE system_id=?", (sid,)).fetchall()
     linked = {r[0]: r[1] for r in rels}
-    return render_template("system_form.html", system=system, devices=devices, linked=linked, action="edit")
+    return render_template("system_form.html", system=system, devices=devices, linked=linked, action="edit", back_url=back_url)
 
 
 @systems_bp.route("/systems/<int:sid>/delete", methods=["POST"])

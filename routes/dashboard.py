@@ -297,6 +297,20 @@ def dashboard():
     idle_states = db.execute("SELECT id FROM lifecycle_states WHERE name IN ('已下架', '已报废') ORDER BY sort").fetchall()
     idle_state_ids = ','.join(str(s['id']) for s in idle_states) if idle_states else ''
 
+    # 部门成本统计
+    dept_stats = db.execute("""
+        SELECT d.id, d.name, d.budget,
+            COUNT(dev.id) as device_count,
+            COALESCE(SUM(dev.purchase_price), 0) as total_value,
+            COALESCE(SUM(CASE WHEN dev.lifecycle_state_id IN (SELECT id FROM lifecycle_states WHERE name='运行中') THEN dev.purchase_price ELSE 0 END), 0) as active_value
+        FROM departments d
+        LEFT JOIN devices dev ON dev.department_id=d.id
+        WHERE d.is_active=1
+        GROUP BY d.id
+        ORDER BY total_value DESC
+    """).fetchall()
+    stats["dept_stats"] = [dict(r) for r in dept_stats]
+
     return render_template("dashboard.html", stats=stats, type_stats=type_stats,
                            state_stats=state_stats, cat_chart_stats=cat_chart_stats,
                            recent_logs=recent_logs, recent_devices=recent_devices,

@@ -57,7 +57,9 @@ def user_edit(uid):
     user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     if not user:
         abort(404)
+    back_url = request.args.get("back", url_for("users.user_list"))
     if request.method == "POST":
+        back_url = request.form.get("back", url_for("users.user_list"))
         real_name = request.form.get("real_name", "").strip()
         email = request.form.get("email", "").strip()
         role = request.form.get("role", "user")
@@ -68,7 +70,7 @@ def user_edit(uid):
             valid, msg = validate_password(new_password, role)
             if not valid:
                 flash(msg, "danger")
-                return render_template("user_form.html", user=user, action="edit")
+                return render_template("user_form.html", user=user, action="edit", back_url=back_url)
         try:
             if new_password:
                 db.execute("UPDATE users SET real_name=?, email=?, role=?, is_active=?, password=?, updated_at=datetime('now','localtime') WHERE id=?",
@@ -78,10 +80,10 @@ def user_edit(uid):
                            (real_name, email, role, is_active, uid))
             db.commit()
             flash("用户信息已更新", "success")
-            return redirect(url_for("users.user_list"))
+            return redirect(back_url)
         except Exception as e:
             flash(f"更新失败: {e}", "danger")
-    return render_template("user_form.html", user=user, action="edit")
+    return render_template("user_form.html", user=user, action="edit", back_url=back_url)
 
 
 @users_bp.route("/users/<int:uid>/delete", methods=["POST"])
